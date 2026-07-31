@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     data_path: Path = Path("data/sample_articles.jsonl")
     trace_dir: Path = Path(".runtime/traces")
     knowledge_backend: str = "fixture"
+    server_host: str = "127.0.0.1"
+    server_port: int = 8776
     technews_api_base_url: str = Field(default="http://127.0.0.1:8010", validation_alias="TECHNEWS_API_BASE_URL")
     technews_request_timeout: float = Field(default=10.0, validation_alias="TECHNEWS_REQUEST_TIMEOUT")
     technews_auth_token: str = Field(default="", validation_alias="TECHNEWS_AUTH_TOKEN")

@@ -34,6 +34,24 @@ The CLI prints:
 pytest
 ```
 
+## External Agent Server
+
+Run the sample as a small Agent Server-compatible service:
+
+```bash
+tech-radar-agent-server
+```
+
+Then create a run and fetch its trace:
+
+```bash
+curl -fsS -X POST http://127.0.0.1:8776/v1/runs \
+  -H 'Content-Type: application/json' \
+  -d '{"agent_id":"tech-radar","input":"최근 AI Agent 관련 뉴스는 뭐야?"}'
+
+curl -fsS http://127.0.0.1:8776/v1/runs/<run_id>/trace
+```
+
 ## Notes
 
 - MVP tools are read-only.

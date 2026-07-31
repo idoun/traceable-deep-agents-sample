@@ -18,6 +18,14 @@ The trace URL follows the runtime convention:
 /v1/runs/{run_id}/trace
 ```
 
+## External Adapter Direction
+
+The current integration direction is an external adapter first. The sample
+serves the same run/trace shape over HTTP, and `traceable-agent-runtime` can
+later call it as a proxy target or wrap it as a native adapter.
+
+This keeps the runtime core stable while the Deep Agents behavior evolves.
+
 ## Step Types
 
 The adapter emits the runtime-style step names used by

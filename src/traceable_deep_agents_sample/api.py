@@ -1,0 +1,40 @@
+from fastapi import FastAPI, HTTPException, status
+
+from traceable_deep_agents_sample.config import Settings
+from traceable_deep_agents_sample.runtime_adapter import TraceableRuntimeAdapter
+from traceable_deep_agents_sample.runtime_contract import RuntimeRunCreateRequest, RuntimeRunResponse, RuntimeTraceResponse
+
+
+def create_app(settings: Settings | None = None) -> FastAPI:
+    """Create an external Agent Server compatible with traceable-agent-runtime.
+
+    This app is intentionally thin: the tracing contract lives in
+    `TraceableRuntimeAdapter`, while FastAPI only exposes the HTTP boundary that
+    another runtime or UI can call.
+    """
+
+    adapter = TraceableRuntimeAdapter(settings=settings)
+    app = FastAPI(title="Traceable Deep Agents Sample", version="0.1.0")
+
+    @app.get("/health")
+    def health() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @app.post("/v1/runs", response_model=RuntimeRunResponse, status_code=status.HTTP_201_CREATED)
+    def create_run(payload: RuntimeRunCreateRequest) -> RuntimeRunResponse:
+        # Keep request/response shape aligned with traceable-agent-runtime so
+        # integration can start as a proxy before becoming a native runtime tool.
+        return adapter.run(payload)
+
+    @app.get("/v1/runs/{run_id}/trace", response_model=RuntimeTraceResponse)
+    def get_trace(run_id: str) -> RuntimeTraceResponse:
+        trace = adapter.get_trace(run_id)
+        if trace is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trace not found")
+        return trace
+
+    return app
+
+
+app = create_app()
+
