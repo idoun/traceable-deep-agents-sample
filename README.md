@@ -60,3 +60,8 @@ export TECHNEWS_SESSION_COOKIE=...
 ```
 
 Only read endpoints are modeled as agent tools.
+
+## Runtime Compatibility
+
+`TraceableRuntimeAdapter` emits `traceable-agent-runtime`-shaped run and trace
+responses locally. See [docs/runtime-interface.md](docs/runtime-interface.md).
