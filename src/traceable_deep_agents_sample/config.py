@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="TECH_RADAR_", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="TECH_RADAR_", extra="ignore", populate_by_name=True)
 
     agent_id: str = "tech-radar"
     agent_name: str = "Tech Radar Analyst"

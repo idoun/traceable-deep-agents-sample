@@ -8,6 +8,7 @@ from langchain_core.tools import tool
 
 from traceable_deep_agents_sample.config import Settings
 from traceable_deep_agents_sample.knowledge.fixture_store import FixtureArticleStore
+from traceable_deep_agents_sample.knowledge.technews_api_store import TechNewsApiStore
 from traceable_deep_agents_sample.prompts import SYSTEM_PROMPT
 from traceable_deep_agents_sample.tools import TechRadarTools
 
@@ -55,7 +56,7 @@ def _register_read_only_profile(model_spec: str) -> None:
 
 
 def _build_langchain_tools(settings: Settings) -> list[Callable[..., Any]]:
-    toolset = TechRadarTools(FixtureArticleStore(Path(settings.data_path)))
+    toolset = TechRadarTools(_build_store(settings))
 
     @tool
     def search_tech_news(query: str, limit: int = 5) -> dict:
@@ -76,3 +77,16 @@ def _build_langchain_tools(settings: Settings) -> list[Callable[..., Any]]:
         return toolset.get_latest_tech_news(limit=limit)
 
     return [search_tech_news, get_tech_news_article, get_latest_tech_news]
+
+
+def _build_store(settings: Settings) -> FixtureArticleStore | TechNewsApiStore:
+    if settings.knowledge_backend == "fixture":
+        return FixtureArticleStore(Path(settings.data_path))
+    if settings.knowledge_backend == "technews":
+        return TechNewsApiStore(
+            base_url=settings.technews_api_base_url,
+            timeout=settings.technews_request_timeout,
+            auth_token=settings.technews_auth_token,
+            session_cookie=settings.technews_session_cookie,
+        )
+    raise ValueError(f"Unsupported knowledge backend: {settings.knowledge_backend}")

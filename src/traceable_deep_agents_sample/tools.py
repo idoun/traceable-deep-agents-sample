@@ -1,8 +1,5 @@
-from traceable_deep_agents_sample.knowledge.fixture_store import FixtureArticleStore
-
-
 class TechRadarTools:
-    def __init__(self, store: FixtureArticleStore):
+    def __init__(self, store):
         self.store = store
 
     def search_tech_news(
@@ -36,4 +33,3 @@ class TechRadarTools:
             "total_results": len(results),
             "results": [item.model_dump(mode="json") for item in results],
         }
-
