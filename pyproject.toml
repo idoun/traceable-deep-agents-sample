@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "traceable-deep-agents-sample"
+version = "0.1.0"
+description = "Traceable Deep Agents sample for Tech Radar analysis"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "deepagents>=0.7",
+  "httpx>=0.27",
+  "pydantic>=2.8",
+  "pydantic-settings>=2.4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2",
+]
+
+[project.scripts]
+tech-radar-agent = "traceable_deep_agents_sample.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/traceable_deep_agents_sample"]
+
