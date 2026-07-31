@@ -65,3 +65,9 @@ Only read endpoints are modeled as agent tools.
 
 `TraceableRuntimeAdapter` emits `traceable-agent-runtime`-shaped run and trace
 responses locally. See [docs/runtime-interface.md](docs/runtime-interface.md).
+
+Validate against a local sibling checkout of `traceable-agent-runtime`:
+
+```bash
+python scripts/check_runtime_contract.py
+```

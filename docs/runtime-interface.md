@@ -45,3 +45,13 @@ shape. The next integration step is to decide whether the runtime should call
 this package as an external adapter or absorb the agent as a runtime manifest
 plus local tools.
 
+## Contract Check
+
+When this repository sits beside `traceable-agent-runtime`, run:
+
+```bash
+python scripts/check_runtime_contract.py
+```
+
+The script validates the adapter output against the real runtime Pydantic
+schemas and checks that policy is recorded before tool execution.
