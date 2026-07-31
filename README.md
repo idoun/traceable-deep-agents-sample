@@ -38,8 +38,25 @@ pytest
 
 - MVP tools are read-only.
 - Fixture data is synthetic.
-- Deep Agents integration will use `deepagents.create_deep_agent`; the current
-  scaffold keeps deterministic tests independent from live LLM credentials.
+- Deep Agents integration is exposed through `build_deep_agent`; deterministic
+  fixture tests stay independent from live LLM credentials.
 - The future real-data adapter should target `technews-publisher` read APIs:
   `/api/issues`, `/api/issues/latest`, `/api/issues/search`, and `/api/issues/{slug}`.
 
+## Real TechNews API Adapter
+
+Configure the real Personal Tech Radar service with:
+
+```bash
+export TECH_RADAR_KNOWLEDGE_BACKEND=technews
+export TECHNEWS_API_BASE_URL=http://127.0.0.1:8010
+```
+
+If the API requires auth, set one of:
+
+```bash
+export TECHNEWS_AUTH_TOKEN=...
+export TECHNEWS_SESSION_COOKIE=...
+```
+
+Only read endpoints are modeled as agent tools.

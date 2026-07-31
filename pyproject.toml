@@ -11,6 +11,7 @@ requires-python = ">=3.12"
 dependencies = [
   "deepagents>=0.7",
   "httpx>=0.27",
+  "langchain-openai>=1.0",
   "pydantic>=2.8",
   "pydantic-settings>=2.4",
 ]
@@ -29,4 +30,3 @@ pythonpath = ["src"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/traceable_deep_agents_sample"]
-
