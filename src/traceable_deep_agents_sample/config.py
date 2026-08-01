@@ -27,4 +27,6 @@ class Settings(BaseSettings):
     openai_base_url: str = Field(default="https://api.openai.com/v1", validation_alias=AliasChoices("TECH_RADAR_OPENAI_BASE_URL", "LLM_BASE_URL"))
     gemini_api_key: str = Field(default="", validation_alias=AliasChoices("TECH_RADAR_GEMINI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"))
     gemini_model: str = Field(default="gemini-2.5-flash", validation_alias=AliasChoices("TECH_RADAR_GEMINI_MODEL", "GEMINI_MODEL"))
+    execution_mode: str = Field(default="auto", validation_alias="TECH_RADAR_EXECUTION_MODE")
+    deep_path_enabled: bool = Field(default=False, validation_alias="TECH_RADAR_DEEP_PATH_ENABLED")
     app_env: str = Field(default="development", validation_alias=AliasChoices("TECH_RADAR_APP_ENV", "APP_ENV"))

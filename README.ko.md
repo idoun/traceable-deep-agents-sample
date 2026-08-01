@@ -89,6 +89,10 @@ portable frozen tool result를 함께 보내고, sample은 matching frozen tool 
 - Fixture data는 synthetic data입니다.
 - Deep Agents integration은 `build_deep_agent`를 통해 노출됩니다.
 - deterministic fixture test는 live LLM credential 없이 동작합니다.
+- runtime-compatible adapter는 deterministic `ComplexityRouter`를 실행합니다.
+  Tool 실행 전에 `complexity_classified`, `route_selected`,
+  `light_plan_created`를 기록합니다. Deep candidate는 아직 Deep Agents runtime
+  path가 연결되기 전까지 light path로 fallback됩니다.
 - 실제 TechNews adapter는 `technews-publisher` read API를 사용합니다.
   - `/api/issues/latest`
   - `/api/issues/search`

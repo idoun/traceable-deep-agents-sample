@@ -290,3 +290,32 @@ how much context they retrieve and how much reasoning they do with it.
    memory from `ContextMesh`.
 7. Add cross-tenant leakage tests for memory, skill, tool binding, and trace
    visibility.
+
+## Current Implementation Status
+
+The initial contract phase is implemented:
+
+- `RuntimeRunCreateRequest` accepts optional `tenant_id`, `workspace_id`, and
+  `user_id`.
+- `RuntimeRunResponse` returns the resolved identity fields.
+- missing `tenant_id` resolves to the explicit `tenant:default` boundary.
+- `TraceableRuntimeAdapter` records `context_mesh_built` before policy/tool
+  execution.
+- focused tests cover default tenant resolution and tenant/user/session
+  propagation into the ContextMesh trace step.
+
+The first adaptive routing phase is also implemented:
+
+- `ComplexityRouter` classifies requests with deterministic rules and a visible
+  score.
+- `TraceableRuntimeAdapter` records `complexity_classified`, `route_selected`,
+  and `light_plan_created`.
+- simple news/search requests stay on the light path.
+- synthesis, comparison, strategy, risk, or report-style requests are marked as
+  deep candidates.
+- until the Deep Agents runtime path is wired, deep candidates explicitly fall
+  back to the light path with a traceable fallback reason.
+
+The next implementation step is connecting the real Deep Agents path behind the
+existing route decision while keeping deterministic light execution as the
+default smoke and fallback path.

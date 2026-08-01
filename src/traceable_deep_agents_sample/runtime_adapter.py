@@ -5,7 +5,9 @@ from time import perf_counter
 from uuid import uuid4
 
 from traceable_deep_agents_sample.agent import NO_EVIDENCE
+from traceable_deep_agents_sample.complexity_router import ComplexityRouter
 from traceable_deep_agents_sample.config import Settings
+from traceable_deep_agents_sample.context_mesh import build_context_mesh
 from traceable_deep_agents_sample.knowledge.fixture_store import FixtureArticleStore
 from traceable_deep_agents_sample.knowledge.technews_api_store import TechNewsApiStore
 from traceable_deep_agents_sample.runtime_contract import (
@@ -24,7 +26,11 @@ RUNTIME_STEP_TYPES = {
     "replay_completed",
     "replay_failed",
     "manifest_loaded",
+    "context_mesh_built",
     "prompt_composed",
+    "complexity_classified",
+    "route_selected",
+    "light_plan_created",
     "policy_decision",
     "tool_call_started",
     "tool_call_completed",
@@ -47,10 +53,14 @@ class TraceableRuntimeAdapter:
         run_id = f"run_{uuid4().hex}"
         created_at = _now()
         agent_id = payload.agent_id or self.settings.agent_id
+        context_mesh = build_context_mesh(payload)
         run = RuntimeRunResponse(
             run_id=run_id,
             replay_of_run_id=payload.replay.of_run_id if payload.replay else None,
             replay_tool_mode=payload.replay.tool_mode if payload.replay else None,
+            tenant_id=context_mesh["tenant"]["id"],
+            workspace_id=payload.workspace_id,
+            user_id=payload.user_id,
             session_id=payload.session_id,
             status="running",
             agent_id=agent_id,
@@ -89,6 +99,17 @@ class TraceableRuntimeAdapter:
                 output_json={"status": "started"},
             )
             record(
+                "context_mesh_built",
+                "Tenant-scoped ContextMesh built for this sample run.",
+                input_json={
+                    "tenant_id": payload.tenant_id,
+                    "workspace_id": payload.workspace_id,
+                    "user_id": payload.user_id,
+                    "session_id": payload.session_id,
+                },
+                output_json=context_mesh,
+            )
+            record(
                 "manifest_loaded",
                 "Sample agent manifest loaded.",
                 input_json={"requested_agent_id": payload.agent_id or self.settings.agent_id},
@@ -111,6 +132,38 @@ class TraceableRuntimeAdapter:
                 },
                 output_json={"message_count": len(payload.messages) + 1},
             )
+
+            complexity = ComplexityRouter().classify(payload.input)
+            requested_route = _requested_route(self.settings.execution_mode, complexity.route)
+            selected_route = "light"
+            fallback_reason = None
+            if requested_route == "deep":
+                fallback_reason = "Deep Agents execution is not yet wired into the runtime-facing path."
+            record(
+                "complexity_classified",
+                "Request complexity classified by deterministic router.",
+                input_json={"input": payload.input, "execution_mode": self.settings.execution_mode},
+                output_json={
+                    "score": complexity.score,
+                    "route": complexity.route,
+                    "reasons": complexity.reasons,
+                    "router": "deterministic.v1",
+                },
+            )
+            record(
+                "route_selected",
+                "Adaptive execution route selected.",
+                input_json={
+                    "classified_route": complexity.route,
+                    "execution_mode": self.settings.execution_mode,
+                    "deep_path_enabled": self.settings.deep_path_enabled,
+                },
+                output_json={
+                    "requested_route": requested_route,
+                    "selected_route": selected_route,
+                    "fallback_reason": fallback_reason,
+                },
+            )
             record(
                 "policy_decision",
                 "Read-only TechNews tool allowed.",
@@ -123,6 +176,12 @@ class TraceableRuntimeAdapter:
             tools = TechRadarTools(_build_store(self.settings))
             tool_name = _selected_tool_name(payload.input)
             tool_input = _tool_input(tool_name, payload.input)
+            record(
+                "light_plan_created",
+                "Light path planned a single read-only TechNews tool call.",
+                input_json={"route": selected_route},
+                output_json={"tool_name": tool_name, "tool_input": tool_input, "max_tool_calls": 1},
+            )
             record(
                 "tool_call_started",
                 "Tech Radar tool call started.",
@@ -206,6 +265,13 @@ def _execute_tool(tools: TechRadarTools, tool_name: str, tool_input: dict) -> di
     if tool_name == "get_latest_tech_news":
         return tools.get_latest_tech_news(limit=tool_input["limit"])
     return tools.search_tech_news(tool_input["query"], limit=tool_input["limit"])
+
+
+def _requested_route(execution_mode: str, classified_route: str) -> str:
+    mode = execution_mode.strip().lower()
+    if mode in {"light", "deep"}:
+        return mode
+    return classified_route
 
 
 def _asks_for_today_news(user_input: str) -> bool:

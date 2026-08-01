@@ -7,6 +7,9 @@ from pydantic import BaseModel, Field
 class RuntimeRunCreateRequest(BaseModel):
     input: str
     agent_id: str | None = None
+    tenant_id: str | None = None
+    workspace_id: str | None = None
+    user_id: str | None = None
     session_id: str | None = None
     messages: list[dict[str, str]] = Field(default_factory=list)
     summary: str | None = None
@@ -57,6 +60,9 @@ class RuntimeRunResponse(BaseModel):
     run_id: str
     replay_of_run_id: str | None = None
     replay_tool_mode: str | None = None
+    tenant_id: str | None = None
+    workspace_id: str | None = None
+    user_id: str | None = None
     session_id: str | None
     status: str
     agent_id: str

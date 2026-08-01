@@ -41,7 +41,18 @@ def main() -> int:
     RunTraceResponse.model_validate(trace.model_dump())
 
     steps = [step.type for step in trace.steps]
-    required = ["run_started", "policy_decision", "tool_call_started", "tool_call_completed", "final_answer", "run_completed"]
+    required = [
+        "run_started",
+        "context_mesh_built",
+        "complexity_classified",
+        "route_selected",
+        "light_plan_created",
+        "policy_decision",
+        "tool_call_started",
+        "tool_call_completed",
+        "final_answer",
+        "run_completed",
+    ]
     missing = [step for step in required if step not in steps]
     if missing:
         raise SystemExit(f"Missing required trace steps: {missing}")
@@ -56,4 +67,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

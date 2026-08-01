@@ -300,3 +300,30 @@ Light path와 deep path는 같은 memory interface를 공유해야 합니다. �
    연결합니다.
 7. Memory, skill, tool binding, trace visibility에 cross-tenant leakage test를
    추가합니다.
+
+## Current Implementation Status
+
+초기 contract phase는 구현되어 있습니다.
+
+- `RuntimeRunCreateRequest`가 optional `tenant_id`, `workspace_id`, `user_id`를
+  받습니다.
+- `RuntimeRunResponse`가 resolved identity field를 반환합니다.
+- `tenant_id`가 없으면 명시적인 `tenant:default` boundary로 resolve합니다.
+- `TraceableRuntimeAdapter`는 policy/tool 실행 전에 `context_mesh_built` trace를
+  기록합니다.
+- Focused test는 default tenant resolution과 tenant/user/session이 ContextMesh
+  trace step으로 전달되는지 확인합니다.
+
+첫 adaptive routing phase도 구현되어 있습니다.
+
+- `ComplexityRouter`가 deterministic rule과 visible score로 요청을 분류합니다.
+- `TraceableRuntimeAdapter`가 `complexity_classified`, `route_selected`,
+  `light_plan_created`를 기록합니다.
+- 단순 news/search 요청은 light path에 남습니다.
+- synthesis, comparison, strategy, risk, report-style 요청은 deep candidate로
+  표시합니다.
+- 아직 Deep Agents runtime path를 실제 실행 경로에 연결하지 않았기 때문에, deep
+  candidate는 traceable fallback reason과 함께 light path로 처리합니다.
+
+다음 구현 단계는 기존 route decision 뒤에 실제 Deep Agents path를 연결하되,
+deterministic light execution을 smoke/fallback 경로로 유지하는 것입니다.

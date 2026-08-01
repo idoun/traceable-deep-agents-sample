@@ -89,6 +89,10 @@ frozen tool output instead of calling the live TechNews tool.
 - Fixture data is synthetic.
 - Deep Agents integration is exposed through `build_deep_agent`; deterministic
   fixture tests stay independent from live LLM credentials.
+- The runtime-compatible adapter now runs a deterministic `ComplexityRouter`.
+  It records `complexity_classified`, `route_selected`, and `light_plan_created`
+  before tool execution. Deep candidates currently fall back to the light path
+  until the Deep Agents runtime path is wired.
 - The real TechNews adapter targets `technews-publisher` read APIs:
   `/api/issues/latest`, `/api/issues/search`, and `/api/issues/{slug}`.
 - TechNews stores a daily GeekNews digest in the morning for the previous day.
