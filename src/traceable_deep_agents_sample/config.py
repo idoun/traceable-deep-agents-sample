@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,4 +18,13 @@ class Settings(BaseSettings):
     technews_request_timeout: float = Field(default=10.0, validation_alias="TECHNEWS_REQUEST_TIMEOUT")
     technews_auth_token: str = Field(default="", validation_alias="TECHNEWS_AUTH_TOKEN")
     technews_session_cookie: str = Field(default="", validation_alias="TECHNEWS_SESSION_COOKIE")
-    model: str = "openai:gpt-5.5"
+    # TECH_RADAR_MODEL keeps the original Deep Agents model-string escape hatch.
+    # When it is empty, provider-specific settings mirror traceable-agent-runtime.
+    model: str = Field(default="", validation_alias="TECH_RADAR_MODEL")
+    llm_provider: str = Field(default="openai", validation_alias=AliasChoices("TECH_RADAR_LLM_PROVIDER", "LLM_PROVIDER"))
+    llm_model: str = Field(default="gpt-5.5", validation_alias=AliasChoices("TECH_RADAR_LLM_MODEL", "LLM_MODEL"))
+    openai_api_key: str = Field(default="", validation_alias=AliasChoices("TECH_RADAR_OPENAI_API_KEY", "OPENAI_API_KEY"))
+    openai_base_url: str = Field(default="https://api.openai.com/v1", validation_alias=AliasChoices("TECH_RADAR_OPENAI_BASE_URL", "LLM_BASE_URL"))
+    gemini_api_key: str = Field(default="", validation_alias=AliasChoices("TECH_RADAR_GEMINI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"))
+    gemini_model: str = Field(default="gemini-2.5-flash", validation_alias=AliasChoices("TECH_RADAR_GEMINI_MODEL", "GEMINI_MODEL"))
+    app_env: str = Field(default="development", validation_alias=AliasChoices("TECH_RADAR_APP_ENV", "APP_ENV"))

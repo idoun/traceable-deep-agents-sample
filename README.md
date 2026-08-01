@@ -61,6 +61,28 @@ curl -fsS http://127.0.0.1:8776/v1/runs/<run_id>/trace
 - The future real-data adapter should target `technews-publisher` read APIs:
   `/api/issues`, `/api/issues/latest`, `/api/issues/search`, and `/api/issues/{slug}`.
 
+## Deep Agents LLM Provider
+
+By default, the sample uses the same provider vocabulary as
+`traceable-agent-runtime`:
+
+```bash
+export TECH_RADAR_LLM_PROVIDER=openai
+export TECH_RADAR_LLM_MODEL=gpt-5.5
+export OPENAI_API_KEY=...
+```
+
+Gemini is available with the runtime-compatible Gemini environment variables:
+
+```bash
+export TECH_RADAR_LLM_PROVIDER=gemini
+export GEMINI_MODEL=gemini-2.5-flash
+export GEMINI_API_KEY=...
+```
+
+`TECH_RADAR_MODEL` is still supported as a direct Deep Agents/LangChain model
+string override. Leave it empty when using provider-specific settings.
+
 ## Real TechNews API Adapter
 
 Configure the real Personal Tech Radar service with:

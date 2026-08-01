@@ -33,7 +33,7 @@ def build_deep_agent(
     """Build the Deep Agents graph with read-only Tech Radar tools."""
 
     settings = settings or Settings()
-    selected_model = model or settings.model
+    selected_model = model or resolve_deep_agent_model(settings)
     tools = _build_langchain_tools(settings)
     if isinstance(selected_model, str):
         _register_read_only_profile(selected_model)
@@ -43,6 +43,48 @@ def build_deep_agent(
         system_prompt=SYSTEM_PROMPT,
         name=settings.agent_id,
     )
+
+
+def resolve_deep_agent_model(settings: Settings) -> str | BaseChatModel:
+    """Resolve the model surface using the same provider vocabulary as the runtime.
+
+    Deep Agents accepts provider-prefixed LangChain model strings for OpenAI.
+    Gemini needs a concrete LangChain chat model so its API key can be passed
+    without putting secrets into the public model string or runtime traces.
+    """
+
+    if settings.model:
+        return settings.model
+
+    provider = settings.llm_provider.strip().lower() or "openai"
+    if provider == "openai":
+        return f"openai:{settings.llm_model}"
+    if provider == "gemini":
+        return _build_gemini_model(settings)
+    raise ValueError(f"Unsupported LLM provider: {settings.llm_provider}")
+
+
+def _build_gemini_model(settings: Settings) -> BaseChatModel:
+    model_name = settings.gemini_model or settings.llm_model
+    api_key = settings.gemini_api_key
+    if not model_name or not api_key:
+        missing = []
+        if not model_name:
+            missing.append("GEMINI_MODEL or TECH_RADAR_GEMINI_MODEL")
+        if not api_key:
+            missing.append("GEMINI_API_KEY, GOOGLE_API_KEY, or TECH_RADAR_GEMINI_API_KEY")
+        raise ValueError(f"Missing Gemini configuration: {', '.join(missing)}")
+
+    ChatGoogleGenerativeAI = _load_chat_google_generative_ai()
+    return ChatGoogleGenerativeAI(api_key=api_key, model=model_name, temperature=0)
+
+
+def _load_chat_google_generative_ai():
+    try:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+    except ImportError as exc:
+        raise ValueError("Install langchain-google-genai to use TECH_RADAR_LLM_PROVIDER=gemini") from exc
+    return ChatGoogleGenerativeAI
 
 
 def _register_read_only_profile(model_spec: str) -> None:
