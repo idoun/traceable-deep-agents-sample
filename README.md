@@ -11,6 +11,8 @@ The sample can also run as an external Agent Server adapter behind
 `traceable-agent-runtime`. In that mode the runtime owns the public run/trace
 API and imports the sample trace into its own trace store.
 
+Korean documentation is available at [README.ko.md](README.ko.md).
+
 ## Setup
 
 ```bash
@@ -127,6 +129,9 @@ outside git. The sample accepts either a bearer token or a full
 
 `TraceableRuntimeAdapter` emits `traceable-agent-runtime`-shaped run and trace
 responses locally. See [docs/runtime-interface.md](docs/runtime-interface.md).
+For a Korean explanation of the full idounAIChat -> runtime -> sample ->
+TechNews mechanism, see
+[docs/agent-mechanism.ko.md](docs/agent-mechanism.ko.md).
 
 Validate against a local sibling checkout of `traceable-agent-runtime`:
 
