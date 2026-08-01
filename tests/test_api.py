@@ -21,6 +21,18 @@ def test_agent_server_run_and_trace_endpoints():
     assert "final_answer" in step_types
 
 
+def test_agent_server_advertises_frozen_replay_capability():
+    client = TestClient(create_app())
+
+    response = client.get("/v1/agents")
+
+    assert response.status_code == 200
+    [agent] = response.json()["agents"]
+    assert agent["id"] == "tech-radar"
+    assert agent["capabilities"]["replay"]["live"] is True
+    assert agent["capabilities"]["replay"]["frozen"] is True
+
+
 def test_agent_server_trace_not_found():
     client = TestClient(create_app())
 

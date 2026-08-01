@@ -27,6 +27,52 @@ def test_runtime_adapter_records_policy_before_tool_call():
     assert "final_answer" in step_types
 
 
+def test_runtime_adapter_reuses_frozen_tool_result():
+    adapter = TraceableRuntimeAdapter()
+
+    original = adapter.run(RuntimeRunCreateRequest(input="AI Agent tracing"))
+    original_trace = adapter.get_trace(original.run_id)
+    assert original_trace is not None
+    completed = next(step for step in original_trace.steps if step.type == "tool_call_completed")
+
+    replay = adapter.run(
+        RuntimeRunCreateRequest(
+            input="AI Agent tracing",
+            replay={
+                "of_run_id": original.run_id,
+                "tool_mode": "frozen",
+                "frozen_tool_results": [
+                    {
+                        "tool_name": "search_tech_news",
+                        "tool_input": {"query": "AI Agent tracing", "limit": 3},
+                        "result": completed.output_json,
+                    }
+                ],
+            },
+        )
+    )
+    replay_trace = adapter.get_trace(replay.run_id)
+
+    assert replay.replay_of_run_id == original.run_id
+    assert replay.replay_tool_mode == "frozen"
+    assert replay_trace is not None
+    replay_completed = next(step for step in replay_trace.steps if step.type == "tool_call_completed")
+    assert replay_completed.output_json["tool_mode"] == "frozen"
+
+
+def test_runtime_adapter_uses_latest_tool_for_today_news():
+    adapter = TraceableRuntimeAdapter()
+
+    run = adapter.run(RuntimeRunCreateRequest(input="오늘 뉴스중에 AI 내용 알려줘"))
+    trace = adapter.get_trace(run.run_id)
+
+    assert trace is not None
+    started = next(step for step in trace.steps if step.type == "tool_call_started")
+    assert started.input_json["tool_name"] == "get_latest_tech_news"
+    assert "오늘 뉴스는 아직 문서 수집이 완료되지 않았을 수 있습니다" in (run.output_text or "")
+    assert "전날 기준 GeekNews 요약" in (run.output_text or "")
+
+
 def test_runtime_adapter_redacts_sensitive_context():
     adapter = TraceableRuntimeAdapter()
 
@@ -41,4 +87,3 @@ def test_runtime_adapter_redacts_sensitive_context():
 
     assert "secret" not in str(payload)
     assert "[REDACTED]" in str(payload)
-

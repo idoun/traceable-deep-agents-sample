@@ -113,6 +113,12 @@ technews-publisher는 실제 뉴스 데이터 source다. sample agent는 write A
 - `/api/issues/search`
 - `/api/issues/{slug}`
 
+TechNews 데이터는 매일 아침 전날 기준 GeekNews 요약으로 저장된다.
+`technews-publisher/scripts/geeknews_publish.py`는 KST 기준 오늘에서 하루를 뺀
+값을 `issue_date`로 사용하고, title을 `GeekNews 어제자 요약 - YYYY-MM-DD`로
+만든다. 따라서 사용자가 “오늘 뉴스”를 물으면 agent는 최신 수집 issue를 기준으로
+답하면서 오늘 수집분이 아직 없을 수 있음을 알려야 한다.
+
 로컬 backend가 인증을 요구하는 경우 sample service는 다음 중 하나를 받는다.
 
 ```bash

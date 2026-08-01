@@ -14,6 +14,20 @@ class RuntimeRunCreateRequest(BaseModel):
     client_context: dict[str, Any] = Field(default_factory=dict)
     stream: bool = False
     metadata: dict[str, Any] = Field(default_factory=dict)
+    replay: "RuntimeReplayContext | None" = None
+
+
+class RuntimeFrozenToolResult(BaseModel):
+    tool_name: str
+    tool_input: dict[str, Any] = Field(default_factory=dict)
+    result: dict[str, Any] = Field(default_factory=dict)
+
+
+class RuntimeReplayContext(BaseModel):
+    of_run_id: str
+    tool_mode: str = "live"
+    strict_tool_input_match: bool = True
+    frozen_tool_results: list[RuntimeFrozenToolResult] = Field(default_factory=list)
 
 
 class RuntimeRunStats(BaseModel):
@@ -59,3 +73,29 @@ class RuntimeTraceResponse(BaseModel):
     run: RuntimeRunResponse
     steps: list[RuntimeStepRecord]
 
+
+class RuntimeReplayCapabilities(BaseModel):
+    live: bool = True
+    frozen: bool = True
+    frozen_tool_result_schema: str = "traceable-agent-runtime.frozen-tool-result.v1"
+
+
+class RuntimeAgentCapabilities(BaseModel):
+    streaming: bool = False
+    tools: bool = True
+    trace_lookup: bool = True
+    replay: RuntimeReplayCapabilities = Field(default_factory=RuntimeReplayCapabilities)
+
+
+class RuntimePublicAgent(BaseModel):
+    id: str
+    agent_id: str
+    name: str
+    description: str
+    manifest_version: str
+    tools: list[str] = Field(default_factory=list)
+    capabilities: RuntimeAgentCapabilities = Field(default_factory=RuntimeAgentCapabilities)
+
+
+class RuntimeAgentListResponse(BaseModel):
+    agents: list[RuntimePublicAgent]

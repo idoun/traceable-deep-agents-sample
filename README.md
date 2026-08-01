@@ -12,6 +12,8 @@ The sample can also run as an external Agent Server adapter behind
 API and imports the sample trace into its own trace store.
 
 Korean documentation is available at [README.ko.md](README.ko.md).
+Architecture documentation is available at [docs/architecture.md](docs/architecture.md)
+and [docs/architecture.html](docs/architecture.html).
 
 ## Setup
 
@@ -51,6 +53,8 @@ tech-radar-agent-server
 Then create a run and fetch its trace:
 
 ```bash
+curl -fsS http://127.0.0.1:8776/v1/agents
+
 curl -fsS -X POST http://127.0.0.1:8776/v1/runs \
   -H 'Content-Type: application/json' \
   -d '{"agent_id":"tech-radar","input":"최근 AI Agent 관련 뉴스는 뭐야?"}'
@@ -72,6 +76,11 @@ The runtime delegates execution to this service and then imports the returned
 trace, so `GET /v1/runs/<run_id>/trace` on the runtime returns the same
 evidence-backed execution timeline.
 
+The external service advertises replay support through `GET /v1/agents`.
+Runtime frozen replay sends `replay.tool_mode="frozen"` and portable frozen tool
+results in the normal `POST /v1/runs` request. The sample then reuses matching
+frozen tool output instead of calling the live TechNews tool.
+
 ## Notes
 
 - MVP tools are read-only.
@@ -80,6 +89,9 @@ evidence-backed execution timeline.
   fixture tests stay independent from live LLM credentials.
 - The real TechNews adapter targets `technews-publisher` read APIs:
   `/api/issues/latest`, `/api/issues/search`, and `/api/issues/{slug}`.
+- TechNews stores a daily GeekNews digest in the morning for the previous day.
+  When a user asks for today's news, the runtime-compatible adapter uses the
+  latest issue and says that today's collection may not be available yet.
 
 ## Deep Agents LLM Provider
 
@@ -121,17 +133,26 @@ export TECHNEWS_SESSION_COOKIE='idounai_session=...'
 
 Only read endpoints are modeled as agent tools.
 
+Modeled tools:
+
+- `search_tech_news`: search published TechNews issues.
+- `get_latest_tech_news`: fetch the latest published daily issue.
+- `get_tech_news_article`: fetch one issue by slug.
+
 For the local service wrapper, keep any generated session cookie or API token
 outside git. The sample accepts either a bearer token or a full
 `idounai_session=...` cookie string and passes it only to the TechNews backend.
 
 ## Runtime Compatibility
 
-`TraceableRuntimeAdapter` emits `traceable-agent-runtime`-shaped run and trace
-responses locally. See [docs/runtime-interface.md](docs/runtime-interface.md).
+`TraceableRuntimeAdapter` emits `traceable-agent-runtime`-shaped run, trace, and
+agent capability responses locally. See
+[docs/runtime-interface.md](docs/runtime-interface.md).
 For a Korean explanation of the full idounAIChat -> runtime -> sample ->
 TechNews mechanism, see
 [docs/agent-mechanism.ko.md](docs/agent-mechanism.ko.md).
+Korean runtime contract documentation is available at
+[docs/runtime-interface.ko.md](docs/runtime-interface.ko.md).
 
 Validate against a local sibling checkout of `traceable-agent-runtime`:
 

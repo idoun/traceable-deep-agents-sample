@@ -20,6 +20,9 @@ from traceable_deep_agents_sample.tools import TechRadarTools
 MANIFEST_VERSION = "traceable-deep-agents-sample.v1"
 RUNTIME_STEP_TYPES = {
     "run_started",
+    "replay_started",
+    "replay_completed",
+    "replay_failed",
     "manifest_loaded",
     "prompt_composed",
     "policy_decision",
@@ -46,6 +49,8 @@ class TraceableRuntimeAdapter:
         agent_id = payload.agent_id or self.settings.agent_id
         run = RuntimeRunResponse(
             run_id=run_id,
+            replay_of_run_id=payload.replay.of_run_id if payload.replay else None,
+            replay_tool_mode=payload.replay.tool_mode if payload.replay else None,
             session_id=payload.session_id,
             status="running",
             agent_id=agent_id,
@@ -70,6 +75,13 @@ class TraceableRuntimeAdapter:
             )
 
         try:
+            if payload.replay:
+                record(
+                    "replay_started",
+                    "Replay run started by external adapter.",
+                    input_json={"replay_of_run_id": payload.replay.of_run_id, "tool_mode": payload.replay.tool_mode},
+                    output_json={"run_id": run_id},
+                )
             record(
                 "run_started",
                 "Run accepted by TraceableRuntimeAdapter.",
@@ -101,31 +113,36 @@ class TraceableRuntimeAdapter:
             )
             record(
                 "policy_decision",
-                "Read-only search tool allowed.",
-                input_json={"tool_name": "search_tech_news"},
+                "Read-only TechNews tool allowed.",
+                input_json={"tool_name": _selected_tool_name(payload.input)},
                 output_json={"decision": "allow", "reason": "tool is read-only and declared"},
             )
 
             # Keep the runtime-facing adapter on the same knowledge backend as
             # Deep Agents tools, so external server smoke tests exercise real data.
             tools = TechRadarTools(_build_store(self.settings))
+            tool_name = _selected_tool_name(payload.input)
+            tool_input = _tool_input(tool_name, payload.input)
             record(
                 "tool_call_started",
-                "Tech Radar search started.",
-                input_json={"tool_name": "search_tech_news", "tool_input": {"query": payload.input, "limit": 3}},
+                "Tech Radar tool call started.",
+                input_json={"tool_name": tool_name, "tool_input": tool_input, "tool_mode": _tool_mode(payload)},
             )
-            search_result = tools.search_tech_news(payload.input, limit=3)
+            frozen_result = _frozen_tool_result(payload, tool_name=tool_name, tool_input=tool_input)
+            search_result = frozen_result if frozen_result is not None else _execute_tool(tools, tool_name, tool_input)
             record(
                 "tool_call_completed",
-                "Tech Radar search completed.",
+                "Tech Radar tool call completed.",
                 output_json={
-                    "tool_name": "search_tech_news",
-                    "result_count": search_result["total_results"],
-                    "slugs": [item["slug"] for item in search_result["results"]],
+                    "tool_name": tool_name,
+                    "status": "success",
+                    "output": search_result,
+                    "error": None,
+                    "tool_mode": _tool_mode(payload),
                 },
             )
 
-            answer = _answer_from_search(search_result)
+            answer = _answer_from_search(search_result, freshness_note=_freshness_note(payload.input, search_result))
             record(
                 "final_answer",
                 "Final answer prepared.",
@@ -133,6 +150,13 @@ class TraceableRuntimeAdapter:
                 output_json={"answer": answer},
             )
             record("run_completed", "Run completed successfully.", output_json={"status": "completed"})
+            if payload.replay:
+                record(
+                    "replay_completed",
+                    "Replay run completed by external adapter.",
+                    input_json={"replay_of_run_id": payload.replay.of_run_id, "tool_mode": payload.replay.tool_mode},
+                    output_json={"status": "completed"},
+                )
             completed_at = _now()
             run = run.model_copy(
                 update={
@@ -160,11 +184,67 @@ class TraceableRuntimeAdapter:
         return self._traces.get(run_id)
 
 
-def _answer_from_search(search_result: dict) -> str:
+def _answer_from_search(search_result: dict, *, freshness_note: str | None = None) -> str:
     if not search_result["results"]:
         return NO_EVIDENCE
     bullets = "\n".join(f"- {item['title']}: {item['summary']}" for item in search_result["results"])
-    return f"수집된 Tech Radar 데이터에서 관련 근거를 찾았습니다.\n\n{bullets}"
+    prefix = f"{freshness_note}\n\n" if freshness_note else ""
+    return f"{prefix}수집된 Tech Radar 데이터에서 관련 근거를 찾았습니다.\n\n{bullets}"
+
+
+def _selected_tool_name(user_input: str) -> str:
+    return "get_latest_tech_news" if _asks_for_today_news(user_input) else "search_tech_news"
+
+
+def _tool_input(tool_name: str, user_input: str) -> dict:
+    if tool_name == "get_latest_tech_news":
+        return {"limit": 3}
+    return {"query": user_input, "limit": 3}
+
+
+def _execute_tool(tools: TechRadarTools, tool_name: str, tool_input: dict) -> dict:
+    if tool_name == "get_latest_tech_news":
+        return tools.get_latest_tech_news(limit=tool_input["limit"])
+    return tools.search_tech_news(tool_input["query"], limit=tool_input["limit"])
+
+
+def _asks_for_today_news(user_input: str) -> bool:
+    lowered = user_input.lower()
+    return ("오늘" in user_input or "today" in lowered) and ("뉴스" in user_input or "news" in lowered)
+
+
+def _freshness_note(user_input: str, search_result: dict) -> str | None:
+    if not _asks_for_today_news(user_input):
+        return None
+    latest_date = None
+    if search_result.get("results"):
+        latest_date = search_result["results"][0].get("issue_date")
+    suffix = f" 최신 수집분({latest_date}) 기준으로 알려드릴게요." if latest_date else " 최신 수집분 기준으로 알려드릴게요."
+    return f"오늘 뉴스는 아직 문서 수집이 완료되지 않았을 수 있습니다. TechNews는 매일 아침 전날 기준 GeekNews 요약을 저장합니다.{suffix}"
+
+
+def _tool_mode(payload: RuntimeRunCreateRequest) -> str:
+    return payload.replay.tool_mode if payload.replay is not None else "live"
+
+
+def _frozen_tool_result(payload: RuntimeRunCreateRequest, *, tool_name: str, tool_input: dict) -> dict | None:
+    replay = payload.replay
+    if replay is None or replay.tool_mode != "frozen":
+        return None
+    if not replay.frozen_tool_results:
+        raise ValueError(f"No frozen tool result provided for {tool_name}")
+    frozen = replay.frozen_tool_results[0]
+    if frozen.tool_name != tool_name:
+        raise ValueError(f"Frozen tool mismatch: expected {frozen.tool_name}, got {tool_name}")
+    if replay.strict_tool_input_match and frozen.tool_input != tool_input:
+        raise ValueError(f"Frozen tool input mismatch for {tool_name}")
+    result = frozen.result
+    if result.get("status") not in (None, "success"):
+        raise ValueError(str(result.get("error") or f"Frozen tool failed: {tool_name}"))
+    output = result.get("output")
+    if not isinstance(output, dict):
+        raise ValueError(f"Frozen tool result output must be an object for {tool_name}")
+    return output
 
 
 def _build_store(settings: Settings):

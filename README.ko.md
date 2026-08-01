@@ -12,6 +12,8 @@ knowledge source는 이 workspace의 Personal Tech Radar 서비스인
 sample이 만든 trace를 runtime trace store로 가져옵니다.
 
 English documentation is available at [README.md](README.md).
+Architecture 문서는 [docs/architecture.ko.md](docs/architecture.ko.md)와
+[docs/architecture.html](docs/architecture.html)에 있습니다.
 
 ## Setup
 
@@ -51,6 +53,8 @@ tech-radar-agent-server
 그 다음 run을 만들고 trace를 조회할 수 있습니다.
 
 ```bash
+curl -fsS http://127.0.0.1:8776/v1/agents
+
 curl -fsS -X POST http://127.0.0.1:8776/v1/runs \
   -H 'Content-Type: application/json' \
   -d '{"agent_id":"tech-radar","input":"최근 AI Agent 관련 뉴스는 뭐야?"}'
@@ -71,6 +75,11 @@ runtime은 실행을 이 service에 위임한 뒤 반환된 trace를 import합�
 runtime의 `GET /v1/runs/<run_id>/trace`는 같은 evidence-backed execution
 timeline을 반환합니다.
 
+External service는 `GET /v1/agents`에서 replay 지원 여부를 광고합니다. Runtime
+frozen replay는 일반 `POST /v1/runs` request 안에 `replay.tool_mode="frozen"`과
+portable frozen tool result를 함께 보내고, sample은 matching frozen tool output을
+재사용해 live TechNews tool 호출을 건너뜁니다.
+
 ## Notes
 
 - MVP tool은 read-only입니다.
@@ -81,6 +90,9 @@ timeline을 반환합니다.
   - `/api/issues/latest`
   - `/api/issues/search`
   - `/api/issues/{slug}`
+- TechNews는 매일 아침 전날 기준 GeekNews 요약을 저장합니다. 사용자가 오늘
+  뉴스를 물으면 runtime-compatible adapter는 최신 issue를 사용하고, 오늘 수집분이
+  아직 없을 수 있음을 답변에 명시합니다.
 
 ## Deep Agents LLM Provider
 
@@ -122,15 +134,23 @@ export TECHNEWS_SESSION_COOKIE='idounai_session=...'
 
 agent tool은 read endpoint만 모델링합니다.
 
+모델링된 tool:
+
+- `search_tech_news`: published TechNews issue 검색
+- `get_latest_tech_news`: 최신 published daily issue 조회
+- `get_tech_news_article`: slug 기준 단일 issue 조회
+
 로컬 service wrapper에서 생성한 session cookie나 API token은 git 밖에 둡니다.
 sample은 bearer token 또는 전체 `idounai_session=...` cookie string을 받고,
 그 값을 TechNews backend에만 전달합니다.
 
 ## Runtime Compatibility
 
-`TraceableRuntimeAdapter`는 `traceable-agent-runtime` 형태의 run/trace 응답을
-로컬에서 생성합니다. 자세한 runtime contract는
-[docs/runtime-interface.md](docs/runtime-interface.md)를 참고하세요.
+`TraceableRuntimeAdapter`는 `traceable-agent-runtime` 형태의 run, trace, agent
+capability 응답을 로컬에서 생성합니다. 자세한 runtime contract는
+[docs/runtime-interface.ko.md](docs/runtime-interface.ko.md)를 참고하세요.
+영문 runtime contract는 [docs/runtime-interface.md](docs/runtime-interface.md)에
+있습니다.
 
 idounAIChat -> runtime -> sample -> TechNews 전체 동작 메커니즘은
 [docs/agent-mechanism.ko.md](docs/agent-mechanism.ko.md)에 한국어로 정리되어
