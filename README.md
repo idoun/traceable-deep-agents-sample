@@ -14,6 +14,8 @@ API and imports the sample trace into its own trace store.
 Korean documentation is available at [README.ko.md](README.ko.md).
 Architecture documentation is available at [docs/architecture.md](docs/architecture.md)
 and [docs/architecture.html](docs/architecture.html).
+The target adaptive, multi-tenant agent design is documented in
+[docs/adaptive-agent-architecture.md](docs/adaptive-agent-architecture.md).
 
 ## Setup
 

@@ -14,6 +14,9 @@ sample이 만든 trace를 runtime trace store로 가져옵니다.
 English documentation is available at [README.md](README.md).
 Architecture 문서는 [docs/architecture.ko.md](docs/architecture.ko.md)와
 [docs/architecture.html](docs/architecture.html)에 있습니다.
+Adaptive, multi-tenant agent target design은
+[docs/adaptive-agent-architecture.ko.md](docs/adaptive-agent-architecture.ko.md)에
+정리되어 있습니다.
 
 ## Setup
 
