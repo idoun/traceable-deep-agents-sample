@@ -483,8 +483,9 @@ Do not require a live LLM for every test. Use mock or deterministic model paths 
 - analyze `technews-publisher` API/auth/deployment settings
 - analyze `traceable-agent-runtime`
 - analyze `idounAIChat`
-- write `docs/runtime-ui-integration.md`
-- defer code changes to those repositories unless explicitly requested
+- keep the current integration documented in `README.md` and
+  `docs/runtime-interface.md`
+- runtime and UI code changes are now handled in their own repositories
 
 ## 16. Acceptance Criteria
 
@@ -493,7 +494,7 @@ MVP is done when:
 - the project installs locally
 - the CLI runs one question end to end
 - article search works against fixture data
-- the planned real data adapter targets `technews-publisher`
+- the real data adapter targets `technews-publisher` read APIs
 - evidence-backed answers include sources
 - no-evidence questions return the agreed Korean fallback
 - trace JSONL is created per run
@@ -504,8 +505,12 @@ Integration milestone is separate and done when:
 
 - `technews-publisher` can serve read-only issue data to the sample agent
 - `traceable-agent-runtime` can execute or proxy the sample agent
-- `idounAIChat` can select `Tech Radar Analyst`
-- run IDs and trace IDs are visible from the chat flow
+- `idounAIChat` can select `tech-radar`
+- run IDs and imported runtime traces are visible from the chat flow
+
+As of 2026-08-01, this integration milestone is locally verified with the
+runtime delegating to the sample external adapter and idounAIChat displaying the
+resulting run trace.
 
 ## 17. Open Questions
 
@@ -515,6 +520,5 @@ These do not block the MVP:
   `127.0.0.1:8010`, the deployed `/technews-api`, or both?
 - What authentication path should the agent use for the `technews-publisher`
   read APIs in local and deployed environments?
-- Should this sample eventually become part of `traceable-agent-runtime`, or remain an external example package?
 - Which LLM provider should be the default for local manual testing?
 - Should synthetic fixture data be replaced with exported GeekNews/Tech Radar data later?

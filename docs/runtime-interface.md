@@ -1,7 +1,7 @@
 # Runtime Interface
 
-This sample targets the `traceable-agent-runtime` run/trace shape before direct
-server integration.
+This sample targets the `traceable-agent-runtime` run/trace shape and can run
+behind the runtime as an external Agent Server adapter.
 
 ## Compatible Shapes
 
@@ -20,9 +20,9 @@ The trace URL follows the runtime convention:
 
 ## External Adapter Direction
 
-The current integration direction is an external adapter first. The sample
-serves the same run/trace shape over HTTP, and `traceable-agent-runtime` can
-later call it as a proxy target or wrap it as a native adapter.
+The current integration direction is external adapter first. The sample serves
+the same run/trace shape over HTTP, and `traceable-agent-runtime` can call it
+from an agent manifest with `external_adapter`.
 
 This keeps the runtime core stable while the Deep Agents behavior evolves.
 
@@ -47,11 +47,11 @@ For tool paths, `policy_decision` must appear before `tool_call_started`.
 
 ## Current Boundary
 
-This is not yet a `traceable-agent-runtime` plugin or manifest. It is a local
-contract adapter that proves the sample can produce the same run/trace response
-shape. The next integration step is to decide whether the runtime should call
-this package as an external adapter or absorb the agent as a runtime manifest
-plus local tools.
+This is not a native `traceable-agent-runtime` plugin. It remains a separate
+service, and the runtime delegates to it through a manifest such as
+`agents/tech-radar.yaml`. The runtime then imports the external trace into its
+own trace store so normal trace lookup, replay, eval, and UI paths can stay on
+the runtime API.
 
 ## Contract Check
 
