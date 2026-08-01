@@ -66,3 +66,39 @@ def test_auth_headers_are_sent():
     )
 
     assert store.latest()[0].slug == "latest"
+
+
+def test_technews_store_accepts_tool_filter_arguments():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/issues/search"
+        return httpx.Response(
+            200,
+            json={
+                "query": "agent",
+                "total": 2,
+                "items": [
+                    {
+                        "slug": "keep",
+                        "title": "Keep",
+                        "short_summary": "Relevant",
+                        "issue_date": "2026-07-31",
+                        "tags": ["AI Agent"],
+                        "score": {"final_score": 9},
+                    },
+                    {
+                        "slug": "drop",
+                        "title": "Drop",
+                        "short_summary": "Filtered",
+                        "issue_date": "2026-07-30",
+                        "tags": ["Other"],
+                        "score": {"final_score": 4},
+                    },
+                ],
+            },
+        )
+
+    store = TechNewsApiStore("https://technews.example", transport=httpx.MockTransport(handler))
+
+    results = store.search("agent", tags=["AI Agent"], minimum_score=8)
+
+    assert [item.slug for item in results] == ["keep"]

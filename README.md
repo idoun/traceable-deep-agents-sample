@@ -96,7 +96,7 @@ If the API requires auth, set one of:
 
 ```bash
 export TECHNEWS_AUTH_TOKEN=...
-export TECHNEWS_SESSION_COOKIE=...
+export TECHNEWS_SESSION_COOKIE='idounai_session=...'
 ```
 
 Only read endpoints are modeled as agent tools.

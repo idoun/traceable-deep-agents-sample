@@ -22,13 +22,27 @@ class TechNewsApiStore:
         self.session_cookie = session_cookie
         self.transport = transport
 
-    def search(self, query: str, limit: int = 5) -> list[SearchResult]:
+    def search(
+        self,
+        query: str,
+        limit: int = 5,
+        tags: list[str] | None = None,
+        minimum_score: float | None = None,
+    ) -> list[SearchResult]:
         payload = self._get("/api/issues/search", params={"q": query})
-        return [_search_result_from_issue(item) for item in payload.get("items", [])][:limit]
+        results = [_search_result_from_issue(item) for item in payload.get("items", [])]
+        return _filter_results(results, tags=tags, minimum_score=minimum_score)[:limit]
 
-    def latest(self, limit: int = 5) -> list[SearchResult]:
+    def latest(
+        self,
+        limit: int = 5,
+        tags: list[str] | None = None,
+        minimum_score: float | None = None,
+    ) -> list[SearchResult]:
         payload = self._get("/api/issues/latest")
-        return [_search_result_from_issue(payload)][:limit]
+        # technews-publisher exposes a single latest issue endpoint today, so
+        # filter locally to keep this store interchangeable with FixtureArticleStore.
+        return _filter_results([_search_result_from_issue(payload)], tags=tags, minimum_score=minimum_score)[:limit]
 
     def get_article(self, slug: str) -> Article | None:
         response = self._get(f"/api/issues/{slug}")
@@ -96,3 +110,21 @@ def _search_result_from_issue(issue: dict) -> SearchResult:
         matched_terms=issue.get("matched_terms") or [],
         match_score=issue.get("match_score") or article.score.final_score,
     )
+
+
+def _filter_results(
+    results: list[SearchResult],
+    *,
+    tags: list[str] | None,
+    minimum_score: float | None,
+) -> list[SearchResult]:
+    required_tags = {tag.lower() for tag in tags or []}
+    filtered: list[SearchResult] = []
+    for result in results:
+        result_tags = {tag.lower() for tag in result.tags}
+        if required_tags and not required_tags.intersection(result_tags):
+            continue
+        if minimum_score is not None and result.final_score < minimum_score:
+            continue
+        filtered.append(result)
+    return filtered
