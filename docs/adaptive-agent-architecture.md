@@ -48,6 +48,33 @@ The first implementation should use deterministic rules and intent scoring.
 Semantic cache can be added next. A small classifier model should be reserved
 for ambiguous requests instead of being called for every run.
 
+### Deterministic Complexity Routing Rules
+
+`ComplexityRouter` currently uses three marker groups as a transparent bootstrap
+classifier. They are intentionally simple because the first goal is traceability,
+not perfect intent detection.
+
+- `_SYNTHESIS_MARKERS`: raises the score when the request asks for judgment,
+  synthesis, comparison, strategy, risk, or forecasting. Examples include
+  `compare`, `risk`, `forecast`, `비교`, `전망`, and `리스크`.
+- `_MULTI_STEP_MARKERS`: raises the score when the request asks for evidence
+  expansion, details, sources, research, or report-style output. Examples
+  include `evidence`, `detail`, `report`, `근거`, `출처`, and `보고서`.
+- `_SIMPLE_MARKERS`: lowers the score only when no synthesis or multi-step
+  markers are present. These markers identify requests that can usually be
+  answered with one bounded news lookup, such as `today`, `latest`, `search`,
+  `오늘`, `최신`, and `뉴스`.
+
+The marker lists are not intended to be the permanent control plane. They are
+the deterministic v1 policy for the sample. The planned migration path is:
+
+1. keep the current marker rules as a cheap, testable bootstrap;
+2. move tenant-specific routing terms into tenant policy/config instead of code;
+3. add semantic cache for repeated or near-duplicate requests;
+4. use a small classifier model only for ambiguous requests;
+5. keep the final routing decision traceable through `complexity_classified` and
+   `route_selected` regardless of which classifier implementation is used.
+
 Recommended trace steps:
 
 ```text
@@ -288,5 +315,83 @@ how much context they retrieve and how much reasoning they do with it.
 5. Add tenant-aware tool binding around the existing TechNews tools.
 6. Connect Deep Agents as the deep path using only scoped skills, tools, and
    memory from `ContextMesh`.
-7. Add cross-tenant leakage tests for memory, skill, tool binding, and trace
-   visibility.
+7. Add cross-tenant leakage tests for memory, skill, tool binding, replay
+   identity, and trace visibility.
+
+## Roadmap / Open Decisions
+
+Keep this section as the short working checklist for the adaptive-agent design.
+Do not duplicate it into a separate TODO file until the roadmap becomes too
+large for this architecture document.
+
+- Routing markers: keep `_SYNTHESIS_MARKERS`, `_SIMPLE_MARKERS`, and
+  `_MULTI_STEP_MARKERS` as deterministic v1 bootstrap rules only.
+- Routing policy: move tenant-specific routing terms out of code and into
+  tenant policy/config when tenant config storage exists.
+- Semantic cache: add only after the trace contract proves stable, so repeated
+  questions can reuse route/tool decisions without model calls.
+- Classifier model: reserve a small classifier for ambiguous requests. Do not
+  call it for every request unless the deterministic/semantic layers are not
+  enough.
+- Skill registry: keep portable `SKILL.md` folders, but move tenant enablement,
+  approval, version, and hash policy into the runtime registry.
+- Tool Gateway: keep tenant-aware tool binding as the shared contract for both
+  light and deep execution.
+- Deep path: keep Deep Agents behind `TECH_RADAR_DEEP_PATH_ENABLED` until the
+  project decides whether deep execution should be default-on, tenant-gated, or
+  agent-policy-gated.
+- Trace contract: keep `context_mesh_built`, `complexity_classified`,
+  `route_selected`, `skill_catalog_filtered`, `skill_loaded`, and
+  `tool_binding_resolved` stable even if the internal implementation changes.
+
+## Current Implementation Status
+
+The initial contract phase is implemented:
+
+- `RuntimeRunCreateRequest` accepts optional `tenant_id`, `workspace_id`, and
+  `user_id`.
+- `RuntimeRunResponse` returns the resolved identity fields.
+- missing `tenant_id` resolves to the explicit `tenant:default` boundary.
+- `TraceableRuntimeAdapter` records `context_mesh_built` before policy/tool
+  execution.
+- focused tests cover default tenant resolution and tenant/user/session
+  propagation into the ContextMesh trace step.
+
+The first adaptive routing phase is also implemented:
+
+- `ComplexityRouter` classifies requests with deterministic rules and a visible
+  score.
+- `TraceableRuntimeAdapter` records `complexity_classified`, `route_selected`,
+  and `light_plan_created`.
+- simple news/search requests stay on the light path.
+- synthesis, comparison, strategy, risk, or report-style requests are marked as
+  deep candidates.
+- portable `SKILL.md` folders are loaded through a read-only `SkillRegistry`.
+- `skill_catalog_filtered` is recorded for every run, and `skill_loaded` is
+  recorded when `daily-news-freshness` or `tech-trend-briefing` applies.
+- TechNews tools resolve through a tenant-aware Tool Binding layer.
+- `tool_binding_resolved` records the binding id, allowed scopes, and a hashed
+  credential reference before policy and tool execution.
+- focused cross-tenant leakage tests verify that ContextMesh memory namespaces,
+  skill filtering traces, Tool Binding traces, runtime snapshots, and external
+  replay payloads stay inside the resolved tenant boundary.
+- the runtime-facing adapter has a `DeepPathRunner` bridge to `build_deep_agent`.
+  Deep candidates still fall back to the light path by default, but
+  `TECH_RADAR_DEEP_PATH_ENABLED=true` lets deep candidates invoke the Deep
+  Agents path.
+- Deep path traces include `deep_agent_started`, `model_call_started`,
+  `model_call_completed`, and `deep_agent_completed`. If the deep path fails,
+  `deep_agent_failed` is recorded and the deterministic light path is used.
+- LangChain callback events from the Deep Agents graph are bridged into
+  route-specific trace steps such as `deep_model_call_started`,
+  `deep_model_call_completed`, `deep_tool_call_started`, and
+  `deep_tool_call_completed` when the underlying graph emits them.
+- `DeepPathRunner` normalizes LangChain/Gemini graph responses into plain
+  `output_text`. If a graph stops after a tool result without a final assistant
+  message, the runner performs one additional synthesis pass before falling back
+  to a readable tool-result summary.
+
+Live Gemini smoke has covered the enabled deep path, model/tool callback bridge,
+and final answer extraction. The next implementation work should focus on
+answer-quality cases, clearer tool-vs-model replay semantics, and structured
+query planning if semantic filters outgrow the bootstrap marker router.

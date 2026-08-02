@@ -17,6 +17,8 @@ Architecture 문서는 [docs/architecture.ko.md](docs/architecture.ko.md)와
 Adaptive, multi-tenant agent target design은
 [docs/adaptive-agent-architecture.ko.md](docs/adaptive-agent-architecture.ko.md)에
 정리되어 있습니다.
+현재 route와 runtime 검증 계획은 [docs/test-plan.ko.md](docs/test-plan.ko.md)에
+정리되어 있습니다.
 
 ## Setup
 
@@ -87,8 +89,22 @@ portable frozen tool result를 함께 보내고, sample은 matching frozen tool 
 
 - MVP tool은 read-only입니다.
 - Fixture data는 synthetic data입니다.
-- Deep Agents integration은 `build_deep_agent`를 통해 노출됩니다.
+- Deep Agents integration은 `build_deep_agent`와 runtime-facing `DeepPathRunner`를
+  통해 노출됩니다.
 - deterministic fixture test는 live LLM credential 없이 동작합니다.
+- runtime-compatible adapter는 deterministic `ComplexityRouter`를 실행합니다.
+  Tool 실행 전에 `complexity_classified`, `route_selected`,
+  `light_plan_created`를 기록합니다. Deep candidate는 기본적으로 light path로
+  fallback되지만, `TECH_RADAR_DEEP_PATH_ENABLED=true`이면 같은 ContextMesh,
+  SkillRegistry, Tool Binding boundary 뒤에서 Deep Agents path를 호출합니다.
+- Deep Agents graph가 model/tool callback을 내보내면 route-specific trace step으로
+  bridge합니다.
+- Portable skill은 `traceable_deep_agents_sample/skills/*/SKILL.md` 아래에
+  둡니다. Adapter는 매 run마다 `skill_catalog_filtered`를 기록하고,
+  freshness나 trend briefing skill이 적용되면 `skill_loaded`를 기록합니다.
+- TechNews tool은 tenant-aware Tool Binding layer를 통해 resolve합니다. Adapter는
+  policy/tool 실행 전에 binding id, scope, hashed credential reference를 담은
+  `tool_binding_resolved`를 기록합니다.
 - 실제 TechNews adapter는 `technews-publisher` read API를 사용합니다.
   - `/api/issues/latest`
   - `/api/issues/search`
@@ -112,8 +128,8 @@ Gemini는 runtime-compatible Gemini 환경 변수로 사용할 수 있습니다.
 
 ```bash
 export TECH_RADAR_LLM_PROVIDER=gemini
-export GEMINI_MODEL=gemini-2.5-flash
-export GEMINI_API_KEY=...
+export TECH_RADAR_GEMINI_MODEL=gemini-2.5-flash
+export TECH_RADAR_GEMINI_API_KEY=...
 ```
 
 `TECH_RADAR_MODEL`은 Deep Agents/LangChain model string을 직접 넘기는 override로
@@ -146,6 +162,9 @@ agent tool은 read endpoint만 모델링합니다.
 로컬 service wrapper에서 생성한 session cookie나 API token은 git 밖에 둡니다.
 sample은 bearer token 또는 전체 `idounai_session=...` cookie string을 받고,
 그 값을 TechNews backend에만 전달합니다.
+운영에 가까운 service 구성에서는 필요한 private 값을 sample service 전용 env
+파일에 복사해서 둡니다. 이 service가 다른 repository의 runtime/app env 파일을
+직접 참조하게 만들지 않습니다.
 
 ## Runtime Compatibility
 

@@ -199,24 +199,32 @@ external_adapter_call: failed
 ## LLM과 Gemini의 현재 위치
 
 이 repository에는 Deep Agents graph를 만드는 `build_deep_agent` 경로가 있다.
-이 경로는 OpenAI 또는 Gemini provider 설정을 읽을 수 있다.
+Runtime-facing adapter는 `DeepPathRunner`를 통해 이 경로를 호출할 수 있다. 이
+경로는 OpenAI 또는 Gemini provider 설정을 읽을 수 있다.
 
 ```bash
+TECH_RADAR_DEEP_PATH_ENABLED=true
 TECH_RADAR_LLM_PROVIDER=gemini
-GEMINI_MODEL=gemini-2.5-flash
-GEMINI_API_KEY=...
+TECH_RADAR_GEMINI_MODEL=gemini-2.5-flash
+TECH_RADAR_GEMINI_API_KEY=...
 ```
 
-다만 현재 runtime-facing smoke path는 안정적인 contract 검증을 위해
-`TraceableRuntimeAdapter`가 deterministic하게 TechNews search tool을 호출한다.
-즉 지금 확인된 end-to-end 동작은 다음에 가깝다.
+기본값에서는 안정적인 contract 검증을 위해 `TraceableRuntimeAdapter`가
+deterministic light path로 fallback한다. `TECH_RADAR_DEEP_PATH_ENABLED=true`이고
+요청이 deep candidate로 분류되면 Deep Agents path를 호출한다. 따라서 기본 smoke는
+여전히 다음에 가깝다.
 
 ```text
 runtime trace 계약 + TechNews 실제 read data + deterministic answer composition
 ```
 
-Gemini key를 연결하면 다음 단계에서 Deep Agents/LLM 실행 경로를 live smoke하고,
-model call과 tool 결과가 trace에 어떻게 남는지 확장 검증하면 된다.
+Gemini key를 연결한 enabled deep path live smoke는 확인된 상태다. Deep Agents
+graph가 LangChain callback을 내보내면 `deep_model_call_*`, `deep_tool_call_*`
+형태의 route-specific trace step으로 bridge한다. LangChain/Gemini response는
+plain assistant output으로 normalize하며, graph가 tool result까지만 반환하고
+최종 assistant answer를 누락하면 `DeepPathRunner`가 최종 synthesis를 한 번 더
+요청한다. 그래도 최종 답변이 없을 때만 readable tool-result fallback summary를
+사용한다.
 
 ## 보안과 trace redaction
 
@@ -245,9 +253,8 @@ TechNews backend는 `127.0.0.1:8010`에서 read API를 제공해야 한다.
 
 ## 다음 확장 포인트
 
-- Gemini key 연결 후 Deep Agents live path smoke
 - deterministic adapter와 LLM-backed adapter의 역할 경계 정리
-- trace step에 model call 관련 step을 추가할지 결정
+- tool replay와 model replay의 의미와 UI label 분리
 - Tech Radar 답변 품질 eval/regression suite 추가
 - idounAIChat trace timeline UI polish
 - 배포 환경에서 private env 파일과 systemd service 구성을 표준화

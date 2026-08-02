@@ -16,6 +16,8 @@ Architecture documentation is available at [docs/architecture.md](docs/architect
 and [docs/architecture.html](docs/architecture.html).
 The target adaptive, multi-tenant agent design is documented in
 [docs/adaptive-agent-architecture.md](docs/adaptive-agent-architecture.md).
+The current route and runtime verification plan is documented in
+[docs/test-plan.md](docs/test-plan.md).
 
 ## Setup
 
@@ -87,8 +89,23 @@ frozen tool output instead of calling the live TechNews tool.
 
 - MVP tools are read-only.
 - Fixture data is synthetic.
-- Deep Agents integration is exposed through `build_deep_agent`; deterministic
-  fixture tests stay independent from live LLM credentials.
+- Deep Agents integration is exposed through `build_deep_agent` and the
+  runtime-facing `DeepPathRunner`; deterministic fixture tests stay independent
+  from live LLM credentials.
+- The runtime-compatible adapter now runs a deterministic `ComplexityRouter`.
+  It records `complexity_classified`, `route_selected`, and `light_plan_created`
+  before tool execution. Deep candidates fall back to the light path by default,
+  but `TECH_RADAR_DEEP_PATH_ENABLED=true` lets deep candidates call the Deep
+  Agents path behind the same ContextMesh, SkillRegistry, and Tool Binding
+  boundary.
+- Deep Agents model/tool callbacks are bridged to route-specific trace steps
+  when the graph emits them.
+- Portable skills live under `traceable_deep_agents_sample/skills/*/SKILL.md`.
+  The adapter records `skill_catalog_filtered` for every run and `skill_loaded`
+  when a freshness or trend-briefing skill applies.
+- TechNews tools now resolve through a tenant-aware Tool Binding layer. The
+  adapter records `tool_binding_resolved` with binding id, scopes, and a hashed
+  credential reference before policy and tool execution.
 - The real TechNews adapter targets `technews-publisher` read APIs:
   `/api/issues/latest`, `/api/issues/search`, and `/api/issues/{slug}`.
 - TechNews stores a daily GeekNews digest in the morning for the previous day.
@@ -110,8 +127,8 @@ Gemini is available with the runtime-compatible Gemini environment variables:
 
 ```bash
 export TECH_RADAR_LLM_PROVIDER=gemini
-export GEMINI_MODEL=gemini-2.5-flash
-export GEMINI_API_KEY=...
+export TECH_RADAR_GEMINI_MODEL=gemini-2.5-flash
+export TECH_RADAR_GEMINI_API_KEY=...
 ```
 
 `TECH_RADAR_MODEL` is still supported as a direct Deep Agents/LangChain model
@@ -144,6 +161,9 @@ Modeled tools:
 For the local service wrapper, keep any generated session cookie or API token
 outside git. The sample accepts either a bearer token or a full
 `idounai_session=...` cookie string and passes it only to the TechNews backend.
+Production-like service setup should copy the required private values into the
+sample service's own env file. Do not point this service at another repository's
+runtime or application env file.
 
 ## Runtime Compatibility
 
