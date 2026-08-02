@@ -24,6 +24,8 @@ class ComplexityRouter:
     fast path or was considered a deep-reasoning candidate.
     """
 
+    # Bootstrap v1 rules. Keep these transparent and testable while the runtime
+    # grows toward tenant-configured routing policy and optional classifier use.
     _SYNTHESIS_MARKERS = (
         "비교",
         "전망",
@@ -67,6 +69,8 @@ class ComplexityRouter:
         "summary",
         "search",
     )
+    # Multi-step markers are separate from synthesis markers so requests can be
+    # routed deep for evidence expansion even when they do not ask for judgment.
     _MULTI_STEP_MARKERS = ("근거", "출처", "자세히", "보고서", "deep", "research", "evidence", "detail", "report")
 
     def classify(self, user_input: str) -> ComplexityDecision:

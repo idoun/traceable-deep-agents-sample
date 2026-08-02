@@ -48,6 +48,33 @@ The first implementation should use deterministic rules and intent scoring.
 Semantic cache can be added next. A small classifier model should be reserved
 for ambiguous requests instead of being called for every run.
 
+### Deterministic Complexity Routing Rules
+
+`ComplexityRouter` currently uses three marker groups as a transparent bootstrap
+classifier. They are intentionally simple because the first goal is traceability,
+not perfect intent detection.
+
+- `_SYNTHESIS_MARKERS`: raises the score when the request asks for judgment,
+  synthesis, comparison, strategy, risk, or forecasting. Examples include
+  `compare`, `risk`, `forecast`, `비교`, `전망`, and `리스크`.
+- `_MULTI_STEP_MARKERS`: raises the score when the request asks for evidence
+  expansion, details, sources, research, or report-style output. Examples
+  include `evidence`, `detail`, `report`, `근거`, `출처`, and `보고서`.
+- `_SIMPLE_MARKERS`: lowers the score only when no synthesis or multi-step
+  markers are present. These markers identify requests that can usually be
+  answered with one bounded news lookup, such as `today`, `latest`, `search`,
+  `오늘`, `최신`, and `뉴스`.
+
+The marker lists are not intended to be the permanent control plane. They are
+the deterministic v1 policy for the sample. The planned migration path is:
+
+1. keep the current marker rules as a cheap, testable bootstrap;
+2. move tenant-specific routing terms into tenant policy/config instead of code;
+3. add semantic cache for repeated or near-duplicate requests;
+4. use a small classifier model only for ambiguous requests;
+5. keep the final routing decision traceable through `complexity_classified` and
+   `route_selected` regardless of which classifier implementation is used.
+
 Recommended trace steps:
 
 ```text

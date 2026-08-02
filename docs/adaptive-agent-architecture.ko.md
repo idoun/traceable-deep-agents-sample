@@ -48,6 +48,31 @@ Light path는 한 번의 제한된 tool plan으로 답할 수 있는 요청을 �
 첫 구현은 deterministic rule과 intent score로 충분합니다. 그 다음 semantic cache를
 붙이고, 작은 classifier model은 애매한 요청에만 선택적으로 쓰는 편이 좋습니다.
 
+### Deterministic Complexity Routing Rules
+
+현재 `ComplexityRouter`는 세 marker group을 사용하는 투명한 bootstrap
+classifier입니다. 첫 목표는 완벽한 intent detection이 아니라, 왜 light/deep
+후보가 되었는지 trace에 설명 가능하게 남기는 것입니다.
+
+- `_SYNTHESIS_MARKERS`: 판단, 종합, 비교, 전략, 리스크, 전망이 필요한 요청이면
+  score를 올립니다. 예: `compare`, `risk`, `forecast`, `비교`, `전망`, `리스크`
+- `_MULTI_STEP_MARKERS`: 근거 확장, 상세 조회, 출처, research, report-style output이
+  필요한 요청이면 score를 올립니다. 예: `evidence`, `detail`, `report`, `근거`,
+  `출처`, `보고서`
+- `_SIMPLE_MARKERS`: synthesis나 multi-step marker가 없을 때만 score를 낮춥니다.
+  한 번의 bounded news lookup으로 처리할 수 있는 요청을 가리킵니다. 예: `today`,
+  `latest`, `search`, `오늘`, `최신`, `뉴스`
+
+이 marker list는 영구적인 control plane이 아닙니다. 지금은 sample을 위한
+deterministic v1 policy입니다. 계획은 다음 순서입니다.
+
+1. 현재 marker rule은 cheap하고 test 가능한 bootstrap으로 유지합니다.
+2. tenant별 routing term은 code가 아니라 tenant policy/config로 이동합니다.
+3. 반복 또는 유사 요청에는 semantic cache를 붙입니다.
+4. 애매한 요청에만 작은 classifier model을 사용합니다.
+5. classifier 구현이 바뀌어도 최종 routing decision은 `complexity_classified`와
+   `route_selected` trace로 계속 설명 가능하게 유지합니다.
+
 권장 trace step:
 
 ```text
