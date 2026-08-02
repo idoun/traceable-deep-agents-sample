@@ -60,8 +60,17 @@ class DeepPathRunner:
         }
         collector = DeepTraceCallbackHandler()
         response = _invoke_agent(agent, agent_input, collector)
+        answer = _extract_final_answer(response)
+        if not answer:
+            retry_input = _compose_synthesis_retry_input(response)
+            if retry_input is not None:
+                retry_response = _invoke_agent(agent, retry_input, collector)
+                retry_answer = _extract_final_answer(retry_response)
+                if retry_answer:
+                    response = retry_response
+                    answer = retry_answer
         return DeepPathResult(
-            answer=_extract_answer(response),
+            answer=answer or _extract_answer(response),
             raw_output=_summarize_raw_output(response),
             trace_events=collector.events,
         )
@@ -177,8 +186,21 @@ def _compose_user_message(
 
 
 def _extract_answer(response: Any) -> str:
+    answer = _extract_final_answer(response)
+    if answer:
+        return answer
+    if isinstance(response, Mapping):
+        messages = response.get("messages")
+        if isinstance(messages, list) and messages:
+            tool_summary = _extract_tool_result_summary(messages)
+            if tool_summary:
+                return tool_summary
+    return str(response)
+
+
+def _extract_final_answer(response: Any) -> str | None:
     if isinstance(response, str):
-        return response
+        return response if response.strip() else None
     if isinstance(response, Mapping):
         for key in ("answer", "output", "content"):
             value = response.get(key)
@@ -186,16 +208,33 @@ def _extract_answer(response: Any) -> str:
                 return value
         messages = response.get("messages")
         if isinstance(messages, list) and messages:
-            answer = _extract_final_assistant_content(messages)
-            if answer:
-                return answer
-            tool_summary = _extract_tool_result_summary(messages)
-            if tool_summary:
-                return tool_summary
+            return _extract_final_assistant_content(messages)
     content = getattr(response, "content", None)
     if isinstance(content, str) and content.strip():
         return content
-    return str(response)
+    return None
+
+
+def _compose_synthesis_retry_input(response: Any) -> dict[str, Any] | None:
+    if not isinstance(response, Mapping):
+        return None
+    messages = response.get("messages")
+    if not isinstance(messages, list) or not messages:
+        return None
+    if _extract_tool_result_summary(messages) is None:
+        return None
+    return {
+        "messages": [
+            *messages,
+            {
+                "role": "user",
+                "content": (
+                    "위 Tech Radar tool 결과만 근거로 사용해서 사용자 질문에 대한 최종 답변을 한국어로 작성하세요. "
+                    "raw JSON, Python 객체 repr, 내부 메시지 목록은 출력하지 말고, 비교/전망/리스크를 간결하게 정리하세요."
+                ),
+            },
+        ]
+    }
 
 
 def _summarize_raw_output(response: Any) -> dict[str, Any]:

@@ -136,3 +136,66 @@ def test_deep_path_runner_extracts_gemini_text_blocks_from_final_ai_message():
     assert result.answer == "최종 종합 답변입니다."
     assert runner.provider == "gemini"
     assert runner.model == "gemini-test"
+
+
+def test_deep_path_runner_retries_tool_only_response_for_final_synthesis():
+    captured_payloads = []
+
+    class FakeAgent:
+        def invoke(self, payload, config=None):
+            del config
+            captured_payloads.append(payload)
+            if len(captured_payloads) == 1:
+                return UserDict(
+                    {
+                        "messages": [
+                            HumanMessage(content="AI agent 관련 뉴스들을 비교해줘"),
+                            AIMessage(
+                                content="",
+                                tool_calls=[
+                                    {
+                                        "name": "search_tech_news",
+                                        "args": {"query": "AI agent", "limit": 5},
+                                        "id": "tool-call-1",
+                                    }
+                                ],
+                            ),
+                            ToolMessage(
+                                content=json.dumps(
+                                    {
+                                        "results": [
+                                            {
+                                                "title": "Agent investment outlook",
+                                                "summary": "Agents are moving into production workflows.",
+                                            }
+                                        ]
+                                    }
+                                ),
+                                tool_call_id="tool-call-1",
+                            ),
+                        ]
+                    }
+                )
+            return UserDict({"messages": [AIMessage(content=[{"type": "text", "text": "최종 투자 분석 답변"}])]})
+
+    runner = DeepPathRunner(settings=Settings(), agent_factory=lambda settings: FakeAgent())
+
+    result = runner.run(
+        payload=RuntimeRunCreateRequest(input="AI agent 관련 뉴스들을 비교해줘"),
+        context_mesh={"tenant": {"id": "org:test"}},
+        selected_skills=[],
+        tool_binding=ToolBinding(
+            tool_name="search_tech_news",
+            binding_id="org:test:technews.read",
+            tenant_id="org:test",
+            allowed_scopes=("read:issues",),
+            credential_ref_hash="sha256:test",
+        ),
+    )
+
+    assert result.answer == "최종 투자 분석 답변"
+    assert len(captured_payloads) == 2
+    retry_messages = captured_payloads[1]["messages"]
+    assert retry_messages[-1]["role"] == "user"
+    assert "최종 답변" in retry_messages[-1]["content"]
+    assert "최종 assistant 답변을 반환하지 않았습니다" not in result.answer
