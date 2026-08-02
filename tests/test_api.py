@@ -32,6 +32,7 @@ def test_agent_server_run_and_trace_endpoints():
     assert "complexity_classified" in step_types
     assert "route_selected" in step_types
     assert "skill_catalog_filtered" in step_types
+    assert "tool_binding_resolved" in step_types
     assert "light_plan_created" in step_types
     assert step_types.index("policy_decision") < step_types.index("tool_call_started")
     assert "final_answer" in step_types

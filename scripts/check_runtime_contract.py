@@ -47,6 +47,7 @@ def main() -> int:
         "complexity_classified",
         "route_selected",
         "skill_catalog_filtered",
+        "tool_binding_resolved",
         "light_plan_created",
         "policy_decision",
         "tool_call_started",

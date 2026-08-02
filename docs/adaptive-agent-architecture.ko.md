@@ -374,9 +374,12 @@ Light path와 deep path는 같은 memory interface를 공유해야 합니다. �
 - Portable `SKILL.md` folder는 read-only `SkillRegistry`를 통해 로드합니다.
 - 모든 run에 `skill_catalog_filtered`를 기록하고, `daily-news-freshness` 또는
   `tech-trend-briefing`이 적용되면 `skill_loaded`를 기록합니다.
+- TechNews tool은 tenant-aware Tool Binding layer를 통해 resolve합니다.
+- `tool_binding_resolved`는 policy/tool 실행 전에 binding id, allowed scope,
+  hashed credential reference를 기록합니다.
 - 아직 Deep Agents runtime path를 실제 실행 경로에 연결하지 않았기 때문에, deep
   candidate는 traceable fallback reason과 함께 light path로 처리합니다.
 
-다음 구현 단계는 기존 TechNews tool을 tenant-aware tool binding으로 감싸는 것입니다.
-그 다음 실제 Deep Agents path가 light path와 같은 scoped skill, memory, tool
-contract를 사용하도록 연결합니다.
+다음 구현 단계는 memory, skill, tool binding, trace visibility에 대한 focused
+cross-tenant leakage test를 추가하는 것입니다. 그 다음 실제 Deep Agents path가
+light path와 같은 scoped skill, memory, tool contract를 사용하도록 연결합니다.

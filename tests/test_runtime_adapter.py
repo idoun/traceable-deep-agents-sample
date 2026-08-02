@@ -59,6 +59,8 @@ def test_runtime_adapter_records_policy_before_tool_call():
     step_types = [step.type for step in trace.steps]
     assert step_types.index("complexity_classified") < step_types.index("route_selected")
     assert step_types.index("route_selected") < step_types.index("skill_catalog_filtered")
+    assert step_types.index("skill_catalog_filtered") < step_types.index("tool_binding_resolved")
+    assert step_types.index("tool_binding_resolved") < step_types.index("policy_decision")
     assert step_types.index("route_selected") < step_types.index("light_plan_created")
     assert step_types.index("policy_decision") < step_types.index("tool_call_started")
     assert "tool_call_completed" in step_types
@@ -145,3 +147,18 @@ def test_runtime_adapter_redacts_sensitive_context():
 
     assert "secret" not in str(payload)
     assert "[REDACTED]" in str(payload)
+
+
+def test_runtime_adapter_records_tenant_tool_binding_without_raw_secret_ref():
+    adapter = TraceableRuntimeAdapter()
+
+    run = adapter.run(RuntimeRunCreateRequest(input="AI Agent", tenant_id="org:test"))
+    trace = adapter.get_trace(run.run_id)
+
+    assert trace is not None
+    binding = next(step for step in trace.steps if step.type == "tool_binding_resolved")
+    assert binding.output_json["tenant_id"] == "org:test"
+    assert binding.output_json["binding_id"] == "org:test:technews.read"
+    assert binding.output_json["credential_ref"] == "[REDACTED]"
+    assert binding.output_json["credential_ref_hash"].startswith("sha256:")
+    assert "secret://tenant/org:test" not in trace.model_dump_json()

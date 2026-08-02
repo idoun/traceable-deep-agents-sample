@@ -96,6 +96,9 @@ portable frozen tool result를 함께 보내고, sample은 matching frozen tool 
 - Portable skill은 `traceable_deep_agents_sample/skills/*/SKILL.md` 아래에
   둡니다. Adapter는 매 run마다 `skill_catalog_filtered`를 기록하고,
   freshness나 trend briefing skill이 적용되면 `skill_loaded`를 기록합니다.
+- TechNews tool은 tenant-aware Tool Binding layer를 통해 resolve합니다. Adapter는
+  policy/tool 실행 전에 binding id, scope, hashed credential reference를 담은
+  `tool_binding_resolved`를 기록합니다.
 - 실제 TechNews adapter는 `technews-publisher` read API를 사용합니다.
   - `/api/issues/latest`
   - `/api/issues/search`

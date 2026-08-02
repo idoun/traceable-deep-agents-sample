@@ -368,9 +368,13 @@ The first adaptive routing phase is also implemented:
 - portable `SKILL.md` folders are loaded through a read-only `SkillRegistry`.
 - `skill_catalog_filtered` is recorded for every run, and `skill_loaded` is
   recorded when `daily-news-freshness` or `tech-trend-briefing` applies.
+- TechNews tools resolve through a tenant-aware Tool Binding layer.
+- `tool_binding_resolved` records the binding id, allowed scopes, and a hashed
+  credential reference before policy and tool execution.
 - until the Deep Agents runtime path is wired, deep candidates explicitly fall
   back to the light path with a traceable fallback reason.
 
-The next implementation step is tenant-aware tool binding around the existing
-TechNews tools. After that, the real Deep Agents path can use the same scoped
-skill, memory, and tool contract as the light path.
+The next implementation step is adding focused cross-tenant leakage tests around
+memory, skill, tool binding, and trace visibility. After that, the real Deep
+Agents path can use the same scoped skill, memory, and tool contract as the
+light path.

@@ -96,6 +96,9 @@ frozen tool output instead of calling the live TechNews tool.
 - Portable skills live under `traceable_deep_agents_sample/skills/*/SKILL.md`.
   The adapter records `skill_catalog_filtered` for every run and `skill_loaded`
   when a freshness or trend-briefing skill applies.
+- TechNews tools now resolve through a tenant-aware Tool Binding layer. The
+  adapter records `tool_binding_resolved` with binding id, scopes, and a hashed
+  credential reference before policy and tool execution.
 - The real TechNews adapter targets `technews-publisher` read APIs:
   `/api/issues/latest`, `/api/issues/search`, and `/api/issues/{slug}`.
 - TechNews stores a daily GeekNews digest in the morning for the previous day.

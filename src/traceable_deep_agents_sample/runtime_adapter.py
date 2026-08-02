@@ -18,6 +18,7 @@ from traceable_deep_agents_sample.runtime_contract import (
     RuntimeTraceResponse,
 )
 from traceable_deep_agents_sample.skill_registry import SkillRegistry
+from traceable_deep_agents_sample.tool_binding import ToolBindingResolver
 from traceable_deep_agents_sample.tools import TechRadarTools
 
 MANIFEST_VERSION = "traceable-deep-agents-sample.v1"
@@ -34,6 +35,7 @@ RUNTIME_STEP_TYPES = {
     "skill_catalog_filtered",
     "skill_loaded",
     "light_plan_created",
+    "tool_binding_resolved",
     "policy_decision",
     "tool_call_started",
     "tool_call_completed",
@@ -195,18 +197,34 @@ class TraceableRuntimeAdapter:
                         "path": skill.path,
                     },
                 )
+            tool_name = _selected_tool_name(payload.input)
+            tool_input = _tool_input(tool_name, payload.input)
+            tool_binding_resolver = ToolBindingResolver()
+            tool_binding = tool_binding_resolver.resolve(tenant_id=context_mesh["tenant"]["id"], tool_name=tool_name)
+            record(
+                "tool_binding_resolved",
+                "Tenant-scoped Tool Binding resolved for this tool call.",
+                input_json={
+                    "tool_name": tool_name,
+                    "tenant_id": context_mesh["tenant"]["id"],
+                    "available_tool_definitions": tool_binding_resolver.list_definitions(),
+                },
+                output_json=tool_binding.to_trace_payload(),
+            )
             record(
                 "policy_decision",
                 "Read-only TechNews tool allowed.",
-                input_json={"tool_name": _selected_tool_name(payload.input)},
-                output_json={"decision": "allow", "reason": "tool is read-only and declared"},
+                input_json={"tool_name": tool_name, "binding_id": tool_binding.binding_id},
+                output_json={
+                    "decision": "allow",
+                    "reason": "tool binding is read-only and tenant-scoped",
+                    "allowed_scopes": tool_binding.allowed_scopes,
+                },
             )
 
             # Keep the runtime-facing adapter on the same knowledge backend as
             # Deep Agents tools, so external server smoke tests exercise real data.
             tools = TechRadarTools(_build_store(self.settings))
-            tool_name = _selected_tool_name(payload.input)
-            tool_input = _tool_input(tool_name, payload.input)
             record(
                 "light_plan_created",
                 "Light path planned a single read-only TechNews tool call.",
