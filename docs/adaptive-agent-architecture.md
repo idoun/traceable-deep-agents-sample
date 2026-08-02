@@ -315,8 +315,8 @@ how much context they retrieve and how much reasoning they do with it.
 5. Add tenant-aware tool binding around the existing TechNews tools.
 6. Connect Deep Agents as the deep path using only scoped skills, tools, and
    memory from `ContextMesh`.
-7. Add cross-tenant leakage tests for memory, skill, tool binding, and trace
-   visibility.
+7. Add cross-tenant leakage tests for memory, skill, tool binding, replay
+   identity, and trace visibility.
 
 ## Roadmap / Open Decisions
 
@@ -371,10 +371,12 @@ The first adaptive routing phase is also implemented:
 - TechNews tools resolve through a tenant-aware Tool Binding layer.
 - `tool_binding_resolved` records the binding id, allowed scopes, and a hashed
   credential reference before policy and tool execution.
+- focused cross-tenant leakage tests verify that ContextMesh memory namespaces,
+  skill filtering traces, Tool Binding traces, runtime snapshots, and external
+  replay payloads stay inside the resolved tenant boundary.
 - until the Deep Agents runtime path is wired, deep candidates explicitly fall
   back to the light path with a traceable fallback reason.
 
-The next implementation step is adding focused cross-tenant leakage tests around
-memory, skill, tool binding, and trace visibility. After that, the real Deep
-Agents path can use the same scoped skill, memory, and tool contract as the
-light path.
+The next implementation step is connecting the real Deep Agents path behind the
+existing route and feature-flag controls. It should use the same scoped skill,
+memory, and tool contract as the light path.

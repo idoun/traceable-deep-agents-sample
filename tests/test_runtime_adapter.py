@@ -162,3 +162,54 @@ def test_runtime_adapter_records_tenant_tool_binding_without_raw_secret_ref():
     assert binding.output_json["credential_ref"] == "[REDACTED]"
     assert binding.output_json["credential_ref_hash"].startswith("sha256:")
     assert "secret://tenant/org:test" not in trace.model_dump_json()
+
+
+def test_runtime_adapter_keeps_context_mesh_and_tool_binding_tenant_isolated():
+    adapter = TraceableRuntimeAdapter()
+
+    alpha = adapter.run(
+        RuntimeRunCreateRequest(
+            input="오늘 뉴스중에 AI 내용 알려줘",
+            tenant_id="org:alpha",
+            workspace_id="workspace:alpha",
+            user_id="user:alpha",
+            session_id="session:alpha",
+        )
+    )
+    beta = adapter.run(
+        RuntimeRunCreateRequest(
+            input="오늘 뉴스중에 AI 내용 알려줘",
+            tenant_id="org:beta",
+            workspace_id="workspace:beta",
+            user_id="user:beta",
+            session_id="session:beta",
+        )
+    )
+
+    alpha_trace = adapter.get_trace(alpha.run_id)
+    beta_trace = adapter.get_trace(beta.run_id)
+
+    assert alpha_trace is not None
+    assert beta_trace is not None
+    _assert_trace_scoped_to_tenant(alpha_trace, expected="alpha", forbidden="beta")
+    _assert_trace_scoped_to_tenant(beta_trace, expected="beta", forbidden="alpha")
+
+
+def _assert_trace_scoped_to_tenant(trace, *, expected: str, forbidden: str):
+    payload = trace.model_dump_json()
+    assert f"org:{forbidden}" not in payload
+    assert f"workspace:{forbidden}" not in payload
+    assert f"user:{forbidden}" not in payload
+    assert f"session:{forbidden}" not in payload
+
+    context_mesh = next(step for step in trace.steps if step.type == "context_mesh_built")
+    assert context_mesh.output_json["tenant"]["id"] == f"org:{expected}"
+    assert all(namespace.startswith(f"tenant/org:{expected}/") for namespace in context_mesh.output_json["memory"]["namespaces"])
+
+    skill_catalog = next(step for step in trace.steps if step.type == "skill_catalog_filtered")
+    assert skill_catalog.input_json["tenant_id"] == f"org:{expected}"
+
+    binding = next(step for step in trace.steps if step.type == "tool_binding_resolved")
+    assert binding.output_json["tenant_id"] == f"org:{expected}"
+    assert binding.output_json["binding_id"] == f"org:{expected}:technews.read"
+    assert binding.output_json["credential_ref"] == "[REDACTED]"

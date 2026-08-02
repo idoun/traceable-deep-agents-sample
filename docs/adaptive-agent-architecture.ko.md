@@ -323,8 +323,8 @@ Light path와 deep path는 같은 memory interface를 공유해야 합니다. �
 5. 기존 TechNews tool을 tenant-aware tool binding으로 감쌉니다.
 6. Deep Agents path는 `ContextMesh`가 넘긴 scoped skill/tool/memory만 사용하게
    연결합니다.
-7. Memory, skill, tool binding, trace visibility에 cross-tenant leakage test를
-   추가합니다.
+7. Memory, skill, tool binding, replay identity, trace visibility에
+   cross-tenant leakage test를 추가합니다.
 
 ## Roadmap / Open Decisions
 
@@ -377,9 +377,12 @@ Light path와 deep path는 같은 memory interface를 공유해야 합니다. �
 - TechNews tool은 tenant-aware Tool Binding layer를 통해 resolve합니다.
 - `tool_binding_resolved`는 policy/tool 실행 전에 binding id, allowed scope,
   hashed credential reference를 기록합니다.
+- Focused cross-tenant leakage test가 ContextMesh memory namespace, skill
+  filtering trace, Tool Binding trace, runtime snapshot, external replay payload가
+  resolved tenant boundary 안에 머무는지 확인합니다.
 - 아직 Deep Agents runtime path를 실제 실행 경로에 연결하지 않았기 때문에, deep
   candidate는 traceable fallback reason과 함께 light path로 처리합니다.
 
-다음 구현 단계는 memory, skill, tool binding, trace visibility에 대한 focused
-cross-tenant leakage test를 추가하는 것입니다. 그 다음 실제 Deep Agents path가
-light path와 같은 scoped skill, memory, tool contract를 사용하도록 연결합니다.
+다음 구현 단계는 기존 route와 feature flag 뒤에 실제 Deep Agents path를 연결하는
+것입니다. Deep path도 light path와 같은 scoped skill, memory, tool contract를
+사용해야 합니다.
