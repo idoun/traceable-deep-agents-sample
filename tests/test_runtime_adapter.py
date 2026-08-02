@@ -111,6 +111,27 @@ def test_runtime_adapter_uses_deep_path_when_enabled():
     assert route.output_json["selected_route"] == "deep"
 
 
+def test_runtime_adapter_routes_exclusion_filter_request_to_deep_when_enabled():
+    runner = _FakeDeepPathRunner()
+    adapter = TraceableRuntimeAdapter(settings=Settings(deep_path_enabled=True), deep_path_runner=runner)
+
+    run = adapter.run(RuntimeRunCreateRequest(input="어제 기사중 AI가 아닌 기사만 조회해줄래", tenant_id="org:deep"))
+    trace = adapter.get_trace(run.run_id)
+
+    assert trace is not None
+    assert run.output_text == "Deep path answer"
+    assert runner.calls[0]["input"] == "어제 기사중 AI가 아닌 기사만 조회해줄래"
+    complexity = next(step for step in trace.steps if step.type == "complexity_classified")
+    route = next(step for step in trace.steps if step.type == "route_selected")
+    step_types = [step.type for step in trace.steps]
+    assert complexity.output_json["route"] == "deep"
+    assert "requires semantic filtering or exclusion" in complexity.output_json["reasons"]
+    assert route.output_json["requested_route"] == "deep"
+    assert route.output_json["selected_route"] == "deep"
+    assert "deep_agent_started" in step_types
+    assert "light_plan_created" not in step_types
+
+
 def test_runtime_adapter_falls_back_to_light_when_deep_path_fails():
     adapter = TraceableRuntimeAdapter(settings=Settings(deep_path_enabled=True), deep_path_runner=_FailingDeepPathRunner())
 

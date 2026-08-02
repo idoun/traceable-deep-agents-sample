@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from inspect import signature
 from typing import Any, Callable
@@ -31,6 +33,8 @@ class DeepPathRunner:
     def __init__(self, settings: Settings | None = None, agent_factory: Callable[..., Any] = build_deep_agent):
         self.settings = settings or Settings()
         self._agent_factory = agent_factory
+        self.provider = self.settings.llm_provider.strip().lower() or "openai"
+        self.model = _configured_model_name(self.settings)
 
     def run(
         self,
@@ -175,20 +179,19 @@ def _compose_user_message(
 def _extract_answer(response: Any) -> str:
     if isinstance(response, str):
         return response
-    if isinstance(response, dict):
+    if isinstance(response, Mapping):
         for key in ("answer", "output", "content"):
             value = response.get(key)
             if isinstance(value, str) and value.strip():
                 return value
         messages = response.get("messages")
         if isinstance(messages, list) and messages:
-            content = getattr(messages[-1], "content", None)
-            if isinstance(content, str) and content.strip():
-                return content
-            if isinstance(messages[-1], dict):
-                value = messages[-1].get("content")
-                if isinstance(value, str) and value.strip():
-                    return value
+            answer = _extract_final_assistant_content(messages)
+            if answer:
+                return answer
+            tool_summary = _extract_tool_result_summary(messages)
+            if tool_summary:
+                return tool_summary
     content = getattr(response, "content", None)
     if isinstance(content, str) and content.strip():
         return content
@@ -196,9 +199,92 @@ def _extract_answer(response: Any) -> str:
 
 
 def _summarize_raw_output(response: Any) -> dict[str, Any]:
-    if isinstance(response, dict):
+    if isinstance(response, Mapping):
         return {"keys": sorted(str(key) for key in response.keys())}
     return {"type": type(response).__name__}
+
+
+def _extract_final_assistant_content(messages: list[Any]) -> str | None:
+    for message in reversed(messages):
+        if _message_role(message) not in {"assistant", "ai", "aimessage"}:
+            continue
+        content = _message_content(message)
+        if content:
+            return content
+    return None
+
+
+def _extract_tool_result_summary(messages: list[Any]) -> str | None:
+    for message in reversed(messages):
+        if _message_role(message) not in {"tool", "toolmessage"}:
+            continue
+        content = _message_content(message)
+        if not content:
+            continue
+        try:
+            payload = json.loads(content)
+        except json.JSONDecodeError:
+            return content
+        return _summarize_tool_payload(payload)
+    return None
+
+
+def _message_role(message: Any) -> str:
+    if isinstance(message, Mapping):
+        value = message.get("role") or message.get("type")
+        if isinstance(value, str):
+            return value.lower()
+    for attribute in ("role", "type"):
+        value = getattr(message, attribute, None)
+        if isinstance(value, str):
+            return value.lower()
+    return type(message).__name__.lower()
+
+
+def _message_content(message: Any) -> str | None:
+    if isinstance(message, Mapping):
+        value = message.get("content")
+    else:
+        value = getattr(message, "content", None)
+    if isinstance(value, str) and value.strip():
+        return value
+    if isinstance(value, list):
+        text_parts = []
+        for item in value:
+            if isinstance(item, str) and item.strip():
+                text_parts.append(item)
+            elif isinstance(item, Mapping):
+                text = item.get("text")
+                if isinstance(text, str) and text.strip():
+                    text_parts.append(text)
+        if text_parts:
+            return "\n".join(text_parts)
+    return None
+
+
+def _summarize_tool_payload(payload: Any) -> str:
+    if not isinstance(payload, Mapping):
+        return json.dumps(payload, ensure_ascii=False)
+    results = payload.get("results")
+    if not isinstance(results, list) or not results:
+        return "Deep Agents path가 tool call은 완료했지만 최종 assistant 답변을 반환하지 않았습니다."
+    bullets = []
+    for item in results[:5]:
+        if not isinstance(item, Mapping):
+            continue
+        title = str(item.get("title") or item.get("slug") or "Untitled result")
+        summary = str(item.get("summary") or "").strip()
+        bullets.append(f"- {title}: {summary}" if summary else f"- {title}")
+    if not bullets:
+        return "Deep Agents path가 tool call은 완료했지만 최종 assistant 답변을 반환하지 않았습니다."
+    return "\n".join(
+        [
+            "Deep Agents path가 tool call은 완료했지만 최종 assistant 답변을 반환하지 않았습니다.",
+            "마지막 TechNews tool 결과 요약:",
+            "",
+            *bullets,
+        ]
+    )
 
 
 def _serialized_name(serialized: dict[str, Any]) -> str | None:
@@ -211,3 +297,12 @@ def _serialized_name(serialized: dict[str, Any]) -> str | None:
     if isinstance(identifier, str):
         return identifier
     return None
+
+
+def _configured_model_name(settings: Settings) -> str:
+    if settings.model.strip():
+        return settings.model.strip()
+    provider = settings.llm_provider.strip().lower()
+    if provider == "gemini":
+        return settings.gemini_model
+    return settings.llm_model

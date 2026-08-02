@@ -72,6 +72,17 @@ class ComplexityRouter:
     # Multi-step markers are separate from synthesis markers so requests can be
     # routed deep for evidence expansion even when they do not ask for judgment.
     _MULTI_STEP_MARKERS = ("근거", "출처", "자세히", "보고서", "deep", "research", "evidence", "detail", "report")
+    _FILTER_MARKERS = (
+        "아닌",
+        "제외",
+        "빼고",
+        "만",
+        "not",
+        "except",
+        "exclude",
+        "without",
+        "only",
+    )
 
     def classify(self, user_input: str) -> ComplexityDecision:
         normalized = " ".join(user_input.lower().split())
@@ -85,15 +96,20 @@ class ComplexityRouter:
 
         multi_step_hits = _count_hits(normalized, self._MULTI_STEP_MARKERS)
         if multi_step_hits:
-            score += min(0.35, multi_step_hits * 0.12)
+            score += min(0.6, 0.2 + multi_step_hits * 0.12)
             reasons.append("asks for evidence expansion or report-style output")
+
+        filter_hits = _count_hits(normalized, self._FILTER_MARKERS)
+        if filter_hits:
+            score += min(0.6, 0.25 + filter_hits * 0.15)
+            reasons.append("requires semantic filtering or exclusion")
 
         if len(normalized) >= 80:
             score += 0.15
             reasons.append("long request likely needs planning")
 
         simple_hits = _count_hits(normalized, self._SIMPLE_MARKERS)
-        if simple_hits and not synthesis_hits and not multi_step_hits:
+        if simple_hits and not synthesis_hits and not multi_step_hits and not filter_hits:
             score -= min(0.3, simple_hits * 0.08)
             reasons.append("single-step news lookup can use the light path")
 

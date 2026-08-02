@@ -17,6 +17,8 @@ Architecture 문서는 [docs/architecture.ko.md](docs/architecture.ko.md)와
 Adaptive, multi-tenant agent target design은
 [docs/adaptive-agent-architecture.ko.md](docs/adaptive-agent-architecture.ko.md)에
 정리되어 있습니다.
+현재 route와 runtime 검증 계획은 [docs/test-plan.ko.md](docs/test-plan.ko.md)에
+정리되어 있습니다.
 
 ## Setup
 

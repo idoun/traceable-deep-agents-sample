@@ -16,6 +16,8 @@ Architecture documentation is available at [docs/architecture.md](docs/architect
 and [docs/architecture.html](docs/architecture.html).
 The target adaptive, multi-tenant agent design is documented in
 [docs/adaptive-agent-architecture.md](docs/adaptive-agent-architecture.md).
+The current route and runtime verification plan is documented in
+[docs/test-plan.md](docs/test-plan.md).
 
 ## Setup
 
