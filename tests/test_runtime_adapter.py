@@ -103,6 +103,8 @@ def test_runtime_adapter_uses_deep_path_when_enabled():
     assert "deep_agent_started" in step_types
     assert "model_call_started" in step_types
     assert "model_call_completed" in step_types
+    assert "deep_tool_call_started" in step_types
+    assert "deep_tool_call_completed" in step_types
     assert "deep_agent_completed" in step_types
     assert "light_plan_created" not in step_types
     route = next(step for step in trace.steps if step.type == "route_selected")
@@ -272,7 +274,22 @@ class _FakeDeepPathRunner:
                 "binding_id": tool_binding.binding_id,
             }
         )
-        return DeepPathResult(answer="Deep path answer", raw_output={"source": "fake"})
+        return DeepPathResult(
+            answer="Deep path answer",
+            raw_output={"source": "fake"},
+            trace_events=[
+                {
+                    "step_type": "deep_tool_call_started",
+                    "summary": "Fake deep tool started.",
+                    "input_json": {"tool_name": "search_tech_news"},
+                },
+                {
+                    "step_type": "deep_tool_call_completed",
+                    "summary": "Fake deep tool completed.",
+                    "output_json": {"output_type": "dict"},
+                },
+            ],
+        )
 
 
 class _FailingDeepPathRunner:

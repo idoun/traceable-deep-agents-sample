@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from inspect import signature
 from typing import Any, Callable
+
+from langchain_core.callbacks import BaseCallbackHandler
 
 from traceable_deep_agents_sample.config import Settings
 from traceable_deep_agents_sample.deep_agent import build_deep_agent
@@ -16,6 +19,7 @@ class DeepPathResult:
 
     answer: str
     raw_output: dict[str, Any]
+    trace_events: list[dict[str, Any]]
 
 
 class DeepPathRunner:
@@ -37,22 +41,112 @@ class DeepPathRunner:
         tool_binding: ToolBinding,
     ) -> DeepPathResult:
         agent = self._agent_factory(self.settings)
-        response = agent.invoke(
+        agent_input = {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": _compose_user_message(
+                        payload=payload,
+                        context_mesh=context_mesh,
+                        selected_skills=selected_skills,
+                        tool_binding=tool_binding,
+                    ),
+                }
+            ]
+        }
+        collector = DeepTraceCallbackHandler()
+        response = _invoke_agent(agent, agent_input, collector)
+        return DeepPathResult(
+            answer=_extract_answer(response),
+            raw_output=_summarize_raw_output(response),
+            trace_events=collector.events,
+        )
+
+
+class DeepTraceCallbackHandler(BaseCallbackHandler):
+    """Collect LangChain model/tool callbacks as portable trace events."""
+
+    def __init__(self) -> None:
+        self.events: list[dict[str, Any]] = []
+
+    def on_chat_model_start(self, serialized: dict[str, Any], messages: list, **kwargs: Any) -> None:
+        del kwargs
+        self.events.append(
             {
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": _compose_user_message(
-                            payload=payload,
-                            context_mesh=context_mesh,
-                            selected_skills=selected_skills,
-                            tool_binding=tool_binding,
-                        ),
-                    }
-                ]
+                "step_type": "deep_model_call_started",
+                "summary": "Deep Agents chat model call started.",
+                "input_json": {"model": _serialized_name(serialized), "message_count": len(messages)},
             }
         )
-        return DeepPathResult(answer=_extract_answer(response), raw_output=_summarize_raw_output(response))
+
+    def on_llm_start(self, serialized: dict[str, Any], prompts: list[str], **kwargs: Any) -> None:
+        del kwargs
+        self.events.append(
+            {
+                "step_type": "deep_model_call_started",
+                "summary": "Deep Agents LLM call started.",
+                "input_json": {"model": _serialized_name(serialized), "prompt_count": len(prompts)},
+            }
+        )
+
+    def on_llm_end(self, response: Any, **kwargs: Any) -> None:
+        del kwargs
+        self.events.append(
+            {
+                "step_type": "deep_model_call_completed",
+                "summary": "Deep Agents model call completed.",
+                "output_json": {"response_type": type(response).__name__},
+            }
+        )
+
+    def on_llm_error(self, error: BaseException, **kwargs: Any) -> None:
+        del kwargs
+        self.events.append(
+            {
+                "step_type": "deep_model_call_failed",
+                "summary": "Deep Agents model call failed.",
+                "status": "failed",
+                "error": str(error),
+            }
+        )
+
+    def on_tool_start(self, serialized: dict[str, Any], input_str: str, **kwargs: Any) -> None:
+        del kwargs
+        self.events.append(
+            {
+                "step_type": "deep_tool_call_started",
+                "summary": "Deep Agents tool call started.",
+                "input_json": {"tool_name": _serialized_name(serialized), "input": input_str},
+            }
+        )
+
+    def on_tool_end(self, output: Any, **kwargs: Any) -> None:
+        del kwargs
+        self.events.append(
+            {
+                "step_type": "deep_tool_call_completed",
+                "summary": "Deep Agents tool call completed.",
+                "output_json": {"output_type": type(output).__name__},
+            }
+        )
+
+    def on_tool_error(self, error: BaseException, **kwargs: Any) -> None:
+        del kwargs
+        self.events.append(
+            {
+                "step_type": "deep_tool_call_failed",
+                "summary": "Deep Agents tool call failed.",
+                "status": "failed",
+                "error": str(error),
+            }
+        )
+
+
+def _invoke_agent(agent: Any, agent_input: dict[str, Any], collector: DeepTraceCallbackHandler) -> Any:
+    invoke = agent.invoke
+    if "config" in signature(invoke).parameters:
+        return invoke(agent_input, config={"callbacks": [collector]})
+    return invoke(agent_input)
 
 
 def _compose_user_message(
@@ -105,3 +199,15 @@ def _summarize_raw_output(response: Any) -> dict[str, Any]:
     if isinstance(response, dict):
         return {"keys": sorted(str(key) for key in response.keys())}
     return {"type": type(response).__name__}
+
+
+def _serialized_name(serialized: dict[str, Any]) -> str | None:
+    name = serialized.get("name")
+    if isinstance(name, str):
+        return name
+    identifier = serialized.get("id")
+    if isinstance(identifier, list) and identifier:
+        return str(identifier[-1])
+    if isinstance(identifier, str):
+        return identifier
+    return None

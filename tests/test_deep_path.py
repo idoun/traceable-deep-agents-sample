@@ -8,8 +8,11 @@ def test_deep_path_runner_invokes_agent_with_scoped_runtime_context():
     captured = {}
 
     class FakeAgent:
-        def invoke(self, payload):
+        def invoke(self, payload, config=None):
             captured.update(payload)
+            [callback] = config["callbacks"]
+            callback.on_tool_start({"name": "search_tech_news"}, '{"query": "AI agent"}')
+            callback.on_tool_end({"total_results": 1})
             return {"messages": [{"role": "assistant", "content": "Scoped deep answer"}]}
 
     runner = DeepPathRunner(settings=Settings(), agent_factory=lambda settings: FakeAgent())
@@ -32,3 +35,4 @@ def test_deep_path_runner_invokes_agent_with_scoped_runtime_context():
     assert "tenant_id: org:test" in message
     assert "allowed_tool_binding: org:test:technews.read" in message
     assert "allowed_scopes: read:issues" in message
+    assert [event["step_type"] for event in result.trace_events] == ["deep_tool_call_started", "deep_tool_call_completed"]

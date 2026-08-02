@@ -219,7 +219,9 @@ runtime trace 계약 + TechNews 실제 read data + deterministic answer composit
 ```
 
 Gemini key를 연결하면 Deep Agents/LLM 실행 경로를 live smoke하고, model call과
-tool 결과가 trace에 어떻게 남는지 확장 검증하면 된다.
+tool 결과가 trace에 어떻게 남는지 확장 검증하면 된다. Deep Agents graph가
+LangChain callback을 내보내면 `deep_model_call_*`, `deep_tool_call_*` 형태의
+route-specific trace step으로 bridge한다.
 
 ## 보안과 trace redaction
 

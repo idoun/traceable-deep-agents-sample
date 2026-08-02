@@ -381,7 +381,11 @@ The first adaptive routing phase is also implemented:
 - Deep path traces include `deep_agent_started`, `model_call_started`,
   `model_call_completed`, and `deep_agent_completed`. If the deep path fails,
   `deep_agent_failed` is recorded and the deterministic light path is used.
+- LangChain callback events from the Deep Agents graph are bridged into
+  route-specific trace steps such as `deep_model_call_started`,
+  `deep_model_call_completed`, `deep_tool_call_started`, and
+  `deep_tool_call_completed` when the underlying graph emits them.
 
 The next implementation step is live provider smoke testing with Gemini or
-OpenAI credentials, then bridging Deep Agents tool/model events into richer
-runtime trace steps.
+OpenAI credentials, then using those traces to refine the model/tool event
+mapping where the real Deep Agents graph emits provider-specific callback data.

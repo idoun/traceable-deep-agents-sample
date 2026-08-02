@@ -95,6 +95,8 @@ portable frozen tool result를 함께 보내고, sample은 matching frozen tool 
   `light_plan_created`를 기록합니다. Deep candidate는 기본적으로 light path로
   fallback되지만, `TECH_RADAR_DEEP_PATH_ENABLED=true`이면 같은 ContextMesh,
   SkillRegistry, Tool Binding boundary 뒤에서 Deep Agents path를 호출합니다.
+- Deep Agents graph가 model/tool callback을 내보내면 route-specific trace step으로
+  bridge합니다.
 - Portable skill은 `traceable_deep_agents_sample/skills/*/SKILL.md` 아래에
   둡니다. Adapter는 매 run마다 `skill_catalog_filtered`를 기록하고,
   freshness나 trend briefing skill이 적용되면 `skill_loaded`를 기록합니다.

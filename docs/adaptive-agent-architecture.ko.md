@@ -386,7 +386,11 @@ Light path와 deep path는 같은 memory interface를 공유해야 합니다. �
 - Deep path trace에는 `deep_agent_started`, `model_call_started`,
   `model_call_completed`, `deep_agent_completed`가 남습니다. Deep path가 실패하면
   `deep_agent_failed`를 기록하고 deterministic light path를 사용합니다.
+- Deep Agents graph에서 발생하는 LangChain callback event는 가능한 경우
+  `deep_model_call_started`, `deep_model_call_completed`,
+  `deep_tool_call_started`, `deep_tool_call_completed` 같은 route-specific trace
+  step으로 bridge합니다.
 
 다음 구현 단계는 Gemini 또는 OpenAI credential로 live provider smoke를 진행하고,
-그 다음 Deep Agents 내부 tool/model event를 더 풍부한 runtime trace step으로
-bridging하는 것입니다.
+실제 Deep Agents graph가 provider별로 내보내는 callback data를 기준으로
+model/tool event mapping을 더 다듬는 것입니다.

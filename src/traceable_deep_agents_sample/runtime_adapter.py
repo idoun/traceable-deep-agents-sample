@@ -43,6 +43,12 @@ RUNTIME_STEP_TYPES = {
     "model_call_completed",
     "deep_agent_completed",
     "deep_agent_failed",
+    "deep_model_call_started",
+    "deep_model_call_completed",
+    "deep_model_call_failed",
+    "deep_tool_call_started",
+    "deep_tool_call_completed",
+    "deep_tool_call_failed",
     "tool_call_started",
     "tool_call_completed",
     "tool_call_failed",
@@ -256,6 +262,15 @@ class TraceableRuntimeAdapter:
                         selected_skills=selected_skills,
                         tool_binding=tool_binding,
                     )
+                    for event in deep_result.trace_events:
+                        record(
+                            event["step_type"],
+                            event.get("summary", "Deep Agents runtime event."),
+                            input_json=event.get("input_json"),
+                            output_json=event.get("output_json"),
+                            status=event.get("status", "completed"),
+                            error=event.get("error"),
+                        )
                     record(
                         "model_call_completed",
                         "Deep Agents model call completed.",

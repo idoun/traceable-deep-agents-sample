@@ -96,6 +96,8 @@ frozen tool output instead of calling the live TechNews tool.
   but `TECH_RADAR_DEEP_PATH_ENABLED=true` lets deep candidates call the Deep
   Agents path behind the same ContextMesh, SkillRegistry, and Tool Binding
   boundary.
+- Deep Agents model/tool callbacks are bridged to route-specific trace steps
+  when the graph emits them.
 - Portable skills live under `traceable_deep_agents_sample/skills/*/SKILL.md`.
   The adapter records `skill_catalog_filtered` for every run and `skill_loaded`
   when a freshness or trend-briefing skill applies.
