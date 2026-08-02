@@ -318,6 +318,31 @@ how much context they retrieve and how much reasoning they do with it.
 7. Add cross-tenant leakage tests for memory, skill, tool binding, and trace
    visibility.
 
+## Roadmap / Open Decisions
+
+Keep this section as the short working checklist for the adaptive-agent design.
+Do not duplicate it into a separate TODO file until the roadmap becomes too
+large for this architecture document.
+
+- Routing markers: keep `_SYNTHESIS_MARKERS`, `_SIMPLE_MARKERS`, and
+  `_MULTI_STEP_MARKERS` as deterministic v1 bootstrap rules only.
+- Routing policy: move tenant-specific routing terms out of code and into
+  tenant policy/config when tenant config storage exists.
+- Semantic cache: add only after the trace contract proves stable, so repeated
+  questions can reuse route/tool decisions without model calls.
+- Classifier model: reserve a small classifier for ambiguous requests. Do not
+  call it for every request unless the deterministic/semantic layers are not
+  enough.
+- Skill registry: keep portable `SKILL.md` folders, but move tenant enablement,
+  approval, version, and hash policy into the runtime registry.
+- Tool Gateway: add tenant-aware tool binding before wiring the real Deep Agents
+  path, so both light and deep execution use the same scoped tool contract.
+- Deep path: connect Deep Agents only after route, skill, memory, and tool
+  boundaries are visible in trace.
+- Trace contract: keep `context_mesh_built`, `complexity_classified`,
+  `route_selected`, `skill_catalog_filtered`, `skill_loaded`, and
+  `tool_binding_resolved` stable even if the internal implementation changes.
+
 ## Current Implementation Status
 
 The initial contract phase is implemented:
@@ -346,6 +371,6 @@ The first adaptive routing phase is also implemented:
 - until the Deep Agents runtime path is wired, deep candidates explicitly fall
   back to the light path with a traceable fallback reason.
 
-The next implementation step is connecting the real Deep Agents path behind the
-existing route decision while keeping deterministic light execution as the
-default smoke and fallback path.
+The next implementation step is tenant-aware tool binding around the existing
+TechNews tools. After that, the real Deep Agents path can use the same scoped
+skill, memory, and tool contract as the light path.

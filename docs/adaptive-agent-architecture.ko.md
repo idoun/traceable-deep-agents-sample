@@ -326,6 +326,30 @@ Light path와 deep path는 같은 memory interface를 공유해야 합니다. �
 7. Memory, skill, tool binding, trace visibility에 cross-tenant leakage test를
    추가합니다.
 
+## Roadmap / Open Decisions
+
+이 섹션은 adaptive-agent 설계의 짧은 작업 체크리스트로 유지합니다. 별도 TODO
+문서는 roadmap이 이 architecture 문서 안에서 관리하기 어려울 정도로 커졌을 때
+분리합니다.
+
+- Routing marker: `_SYNTHESIS_MARKERS`, `_SIMPLE_MARKERS`,
+  `_MULTI_STEP_MARKERS`는 deterministic v1 bootstrap rule로만 유지합니다.
+- Routing policy: tenant config storage가 생기면 tenant별 routing term은 code가
+  아니라 tenant policy/config로 이동합니다.
+- Semantic cache: trace contract가 안정된 뒤 추가해서 반복/유사 질문은 model call
+  없이 route/tool decision을 재사용할 수 있게 합니다.
+- Classifier model: 작은 classifier는 애매한 요청에만 사용합니다.
+  Deterministic/semantic layer로 충분하면 모든 요청에 호출하지 않습니다.
+- Skill registry: portable `SKILL.md` folder는 유지하되, tenant enablement,
+  approval, version, hash policy는 runtime registry로 이동합니다.
+- Tool Gateway: 실제 Deep Agents path를 연결하기 전에 tenant-aware tool binding을
+  추가합니다. 그래야 light와 deep execution이 같은 scoped tool contract를 씁니다.
+- Deep path: route, skill, memory, tool boundary가 trace에 보인 뒤 Deep Agents를
+  연결합니다.
+- Trace contract: 내부 구현이 바뀌어도 `context_mesh_built`,
+  `complexity_classified`, `route_selected`, `skill_catalog_filtered`,
+  `skill_loaded`, `tool_binding_resolved`는 안정적으로 유지합니다.
+
 ## Current Implementation Status
 
 초기 contract phase는 구현되어 있습니다.
@@ -353,5 +377,6 @@ Light path와 deep path는 같은 memory interface를 공유해야 합니다. �
 - 아직 Deep Agents runtime path를 실제 실행 경로에 연결하지 않았기 때문에, deep
   candidate는 traceable fallback reason과 함께 light path로 처리합니다.
 
-다음 구현 단계는 기존 route decision 뒤에 실제 Deep Agents path를 연결하되,
-deterministic light execution을 smoke/fallback 경로로 유지하는 것입니다.
+다음 구현 단계는 기존 TechNews tool을 tenant-aware tool binding으로 감싸는 것입니다.
+그 다음 실제 Deep Agents path가 light path와 같은 scoped skill, memory, tool
+contract를 사용하도록 연결합니다.
