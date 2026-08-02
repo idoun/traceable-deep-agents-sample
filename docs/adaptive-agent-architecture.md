@@ -313,6 +313,9 @@ The first adaptive routing phase is also implemented:
 - simple news/search requests stay on the light path.
 - synthesis, comparison, strategy, risk, or report-style requests are marked as
   deep candidates.
+- portable `SKILL.md` folders are loaded through a read-only `SkillRegistry`.
+- `skill_catalog_filtered` is recorded for every run, and `skill_loaded` is
+  recorded when `daily-news-freshness` or `tech-trend-briefing` applies.
 - until the Deep Agents runtime path is wired, deep candidates explicitly fall
   back to the light path with a traceable fallback reason.
 

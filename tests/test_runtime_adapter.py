@@ -58,6 +58,7 @@ def test_runtime_adapter_records_policy_before_tool_call():
 
     step_types = [step.type for step in trace.steps]
     assert step_types.index("complexity_classified") < step_types.index("route_selected")
+    assert step_types.index("route_selected") < step_types.index("skill_catalog_filtered")
     assert step_types.index("route_selected") < step_types.index("light_plan_created")
     assert step_types.index("policy_decision") < step_types.index("tool_call_started")
     assert "tool_call_completed" in step_types
@@ -77,6 +78,8 @@ def test_runtime_adapter_traces_deep_candidate_with_light_fallback():
     assert route.output_json["requested_route"] == "deep"
     assert route.output_json["selected_route"] == "light"
     assert "Deep Agents execution is not yet wired" in route.output_json["fallback_reason"]
+    skill = next(step for step in trace.steps if step.type == "skill_loaded")
+    assert skill.output_json["skill_id"] == "tech-trend-briefing"
     assert run.status == "completed"
 
 
@@ -121,6 +124,8 @@ def test_runtime_adapter_uses_latest_tool_for_today_news():
 
     assert trace is not None
     started = next(step for step in trace.steps if step.type == "tool_call_started")
+    skill = next(step for step in trace.steps if step.type == "skill_loaded")
+    assert skill.output_json["skill_id"] == "daily-news-freshness"
     assert started.input_json["tool_name"] == "get_latest_tech_news"
     assert "오늘 뉴스는 아직 문서 수집이 완료되지 않았을 수 있습니다" in (run.output_text or "")
     assert "전날 기준 GeekNews 요약" in (run.output_text or "")

@@ -46,6 +46,7 @@ def main() -> int:
         "context_mesh_built",
         "complexity_classified",
         "route_selected",
+        "skill_catalog_filtered",
         "light_plan_created",
         "policy_decision",
         "tool_call_started",

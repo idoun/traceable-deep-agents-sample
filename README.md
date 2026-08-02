@@ -93,6 +93,9 @@ frozen tool output instead of calling the live TechNews tool.
   It records `complexity_classified`, `route_selected`, and `light_plan_created`
   before tool execution. Deep candidates currently fall back to the light path
   until the Deep Agents runtime path is wired.
+- Portable skills live under `traceable_deep_agents_sample/skills/*/SKILL.md`.
+  The adapter records `skill_catalog_filtered` for every run and `skill_loaded`
+  when a freshness or trend-briefing skill applies.
 - The real TechNews adapter targets `technews-publisher` read APIs:
   `/api/issues/latest`, `/api/issues/search`, and `/api/issues/{slug}`.
 - TechNews stores a daily GeekNews digest in the morning for the previous day.

@@ -17,6 +17,7 @@ from traceable_deep_agents_sample.runtime_contract import (
     RuntimeStepRecord,
     RuntimeTraceResponse,
 )
+from traceable_deep_agents_sample.skill_registry import SkillRegistry
 from traceable_deep_agents_sample.tools import TechRadarTools
 
 MANIFEST_VERSION = "traceable-deep-agents-sample.v1"
@@ -30,6 +31,8 @@ RUNTIME_STEP_TYPES = {
     "prompt_composed",
     "complexity_classified",
     "route_selected",
+    "skill_catalog_filtered",
+    "skill_loaded",
     "light_plan_created",
     "policy_decision",
     "tool_call_started",
@@ -164,6 +167,34 @@ class TraceableRuntimeAdapter:
                     "fallback_reason": fallback_reason,
                 },
             )
+            skill_registry = SkillRegistry()
+            selected_skills = skill_registry.select(user_input=payload.input, decision=complexity)
+            record(
+                "skill_catalog_filtered",
+                "Tenant-scoped skill catalog filtered for this run.",
+                input_json={
+                    "tenant_id": context_mesh["tenant"]["id"],
+                    "route": complexity.route,
+                    "available_skill_ids": skill_registry.list_skill_ids(),
+                },
+                output_json={
+                    "selected_skill_ids": [skill.skill_id for skill in selected_skills],
+                    "selection_reasons": {skill.skill_id: skill.reason for skill in selected_skills},
+                },
+            )
+            for skill in selected_skills:
+                record(
+                    "skill_loaded",
+                    "Portable Agent Skill loaded for this run.",
+                    input_json={"skill_id": skill.skill_id, "reason": skill.reason},
+                    output_json={
+                        "skill_id": skill.skill_id,
+                        "name": skill.name,
+                        "version": skill.version,
+                        "hash": skill.hash,
+                        "path": skill.path,
+                    },
+                )
             record(
                 "policy_decision",
                 "Read-only TechNews tool allowed.",
