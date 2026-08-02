@@ -342,10 +342,11 @@ Light path와 deep path는 같은 memory interface를 공유해야 합니다. �
   Deterministic/semantic layer로 충분하면 모든 요청에 호출하지 않습니다.
 - Skill registry: portable `SKILL.md` folder는 유지하되, tenant enablement,
   approval, version, hash policy는 runtime registry로 이동합니다.
-- Tool Gateway: 실제 Deep Agents path를 연결하기 전에 tenant-aware tool binding을
-  추가합니다. 그래야 light와 deep execution이 같은 scoped tool contract를 씁니다.
-- Deep path: live provider credential과 trace event bridge가 안정될 때까지
-  Deep Agents는 `TECH_RADAR_DEEP_PATH_ENABLED` 뒤에 둡니다.
+- Tool Gateway: tenant-aware tool binding을 light와 deep execution이 공유하는
+  contract로 유지합니다.
+- Deep path: deep execution을 default-on으로 둘지, tenant 기준으로 켤지,
+  agent policy 기준으로 켤지 결정할 때까지 Deep Agents는
+  `TECH_RADAR_DEEP_PATH_ENABLED` 뒤에 둡니다.
 - Trace contract: 내부 구현이 바뀌어도 `context_mesh_built`,
   `complexity_classified`, `route_selected`, `skill_catalog_filtered`,
   `skill_loaded`, `tool_binding_resolved`는 안정적으로 유지합니다.
@@ -390,7 +391,12 @@ Light path와 deep path는 같은 memory interface를 공유해야 합니다. �
   `deep_model_call_started`, `deep_model_call_completed`,
   `deep_tool_call_started`, `deep_tool_call_completed` 같은 route-specific trace
   step으로 bridge합니다.
+- `DeepPathRunner`는 LangChain/Gemini graph response를 plain `output_text`로
+  normalize합니다. Graph가 tool result 이후 최종 assistant message 없이 멈추면,
+  readable tool-result summary로 fallback하기 전에 최종 synthesis를 한 번 더
+  요청합니다.
 
-다음 구현 단계는 Gemini 또는 OpenAI credential로 live provider smoke를 진행하고,
-실제 Deep Agents graph가 provider별로 내보내는 callback data를 기준으로
-model/tool event mapping을 더 다듬는 것입니다.
+Gemini live smoke로 enabled deep path, model/tool callback bridge, final answer
+추출은 확인했습니다. 다음 구현 작업은 답변 품질 케이스, tool replay와 model
+replay의 의미 분리, semantic filter가 bootstrap marker router를 넘어설 경우의
+structured query planning에 초점을 둡니다.

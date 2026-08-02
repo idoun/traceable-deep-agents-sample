@@ -128,8 +128,8 @@ Gemini는 runtime-compatible Gemini 환경 변수로 사용할 수 있습니다.
 
 ```bash
 export TECH_RADAR_LLM_PROVIDER=gemini
-export GEMINI_MODEL=gemini-2.5-flash
-export GEMINI_API_KEY=...
+export TECH_RADAR_GEMINI_MODEL=gemini-2.5-flash
+export TECH_RADAR_GEMINI_API_KEY=...
 ```
 
 `TECH_RADAR_MODEL`은 Deep Agents/LangChain model string을 직접 넘기는 override로
@@ -162,6 +162,9 @@ agent tool은 read endpoint만 모델링합니다.
 로컬 service wrapper에서 생성한 session cookie나 API token은 git 밖에 둡니다.
 sample은 bearer token 또는 전체 `idounai_session=...` cookie string을 받고,
 그 값을 TechNews backend에만 전달합니다.
+운영에 가까운 service 구성에서는 필요한 private 값을 sample service 전용 env
+파일에 복사해서 둡니다. 이 service가 다른 repository의 runtime/app env 파일을
+직접 참조하게 만들지 않습니다.
 
 ## Runtime Compatibility
 

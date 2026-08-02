@@ -40,7 +40,8 @@ objects and the runtime response contract:
 - mapping-like graph responses are normalized instead of leaking Python object
   reprs into `output_text`.
 - if the graph returns tool results but no final assistant answer, the adapter
-  emits a readable fallback summary instead of raw messages.
+  asks the Deep Agents path for one final synthesis pass and only emits the
+  readable fallback summary if that retry still has no assistant answer.
 
 ## Replay Semantics
 
@@ -65,6 +66,8 @@ git diff --check
 
 - Browser-level AgentOps checks for route/model/tool-mode labels.
 - Live Gemini answer-quality checks for deep route prompts.
+- Coverage for the synthesis retry path with a live provider, not only a fake
+  graph response.
 - Structured filter/query-planner tests if semantic filtering moves out of the
   bootstrap marker router.
 - Model replay tests if replay expands beyond tool result replay.

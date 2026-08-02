@@ -335,10 +335,11 @@ large for this architecture document.
   enough.
 - Skill registry: keep portable `SKILL.md` folders, but move tenant enablement,
   approval, version, and hash policy into the runtime registry.
-- Tool Gateway: add tenant-aware tool binding before wiring the real Deep Agents
-  path, so both light and deep execution use the same scoped tool contract.
-- Deep path: keep Deep Agents behind `TECH_RADAR_DEEP_PATH_ENABLED` until live
-  provider credentials and trace event bridging are stable.
+- Tool Gateway: keep tenant-aware tool binding as the shared contract for both
+  light and deep execution.
+- Deep path: keep Deep Agents behind `TECH_RADAR_DEEP_PATH_ENABLED` until the
+  project decides whether deep execution should be default-on, tenant-gated, or
+  agent-policy-gated.
 - Trace contract: keep `context_mesh_built`, `complexity_classified`,
   `route_selected`, `skill_catalog_filtered`, `skill_loaded`, and
   `tool_binding_resolved` stable even if the internal implementation changes.
@@ -385,7 +386,12 @@ The first adaptive routing phase is also implemented:
   route-specific trace steps such as `deep_model_call_started`,
   `deep_model_call_completed`, `deep_tool_call_started`, and
   `deep_tool_call_completed` when the underlying graph emits them.
+- `DeepPathRunner` normalizes LangChain/Gemini graph responses into plain
+  `output_text`. If a graph stops after a tool result without a final assistant
+  message, the runner performs one additional synthesis pass before falling back
+  to a readable tool-result summary.
 
-The next implementation step is live provider smoke testing with Gemini or
-OpenAI credentials, then using those traces to refine the model/tool event
-mapping where the real Deep Agents graph emits provider-specific callback data.
+Live Gemini smoke has covered the enabled deep path, model/tool callback bridge,
+and final answer extraction. The next implementation work should focus on
+answer-quality cases, clearer tool-vs-model replay semantics, and structured
+query planning if semantic filters outgrow the bootstrap marker router.

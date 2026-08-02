@@ -40,7 +40,8 @@
 - mapping-like graph response가 Python object repr로 `output_text`에 새지 않도록
   normalize합니다.
 - graph가 tool result까지만 반환하고 최종 assistant answer를 반환하지 않으면,
-  raw message 대신 읽을 수 있는 fallback summary를 반환합니다.
+  Deep Agents path에 최종 synthesis를 한 번 더 요청합니다. 이 retry에도 최종
+  assistant answer가 없을 때만 읽을 수 있는 fallback summary를 반환합니다.
 
 ## Replay Semantics
 
@@ -65,6 +66,7 @@ git diff --check
 
 - AgentOps에서 route/model/tool-mode label을 확인하는 browser-level test
 - deep route prompt에 대한 live Gemini 답변 품질 검증
+- fake graph response가 아닌 live provider 기준 synthesis retry path 검증
 - semantic filtering을 bootstrap marker router 밖으로 옮길 경우 structured
   filter/query-planner test
 - replay가 tool result replay를 넘어 model replay까지 확장될 경우 model replay

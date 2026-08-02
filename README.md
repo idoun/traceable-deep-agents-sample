@@ -127,8 +127,8 @@ Gemini is available with the runtime-compatible Gemini environment variables:
 
 ```bash
 export TECH_RADAR_LLM_PROVIDER=gemini
-export GEMINI_MODEL=gemini-2.5-flash
-export GEMINI_API_KEY=...
+export TECH_RADAR_GEMINI_MODEL=gemini-2.5-flash
+export TECH_RADAR_GEMINI_API_KEY=...
 ```
 
 `TECH_RADAR_MODEL` is still supported as a direct Deep Agents/LangChain model
@@ -161,6 +161,9 @@ Modeled tools:
 For the local service wrapper, keep any generated session cookie or API token
 outside git. The sample accepts either a bearer token or a full
 `idounai_session=...` cookie string and passes it only to the TechNews backend.
+Production-like service setup should copy the required private values into the
+sample service's own env file. Do not point this service at another repository's
+runtime or application env file.
 
 ## Runtime Compatibility
 
