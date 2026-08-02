@@ -10,12 +10,14 @@
       --bg: #f7f8fa;
       --ink: #1f2933;
       --muted: #5b6775;
-      --line: #7a8697;
+      --line: #6f7c8d;
+      --client: #f3edf9;
       --runtime: #e8f1ff;
-      --sample: #e9f8ef;
-      --store: #fff4db;
-      --external: #f3edf9;
-      --risk: #ffe9e5;
+      --mesh: #edf7f4;
+      --light: #fff4db;
+      --deep: #f7e9ee;
+      --store: #eaf4ff;
+      --note: #fff7e6;
     }
     body {
       margin: 0;
@@ -24,7 +26,7 @@
       font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
     main {
-      max-width: 1120px;
+      max-width: 1180px;
       margin: 0 auto;
       padding: 32px 20px;
     }
@@ -44,6 +46,14 @@
       background: #fff;
       border: 1px solid #d8dee7;
     }
+    .box { rx: 9; stroke: #96a1af; stroke-width: 1.4; }
+    .client { fill: var(--client); }
+    .runtime { fill: var(--runtime); }
+    .mesh { fill: var(--mesh); }
+    .light { fill: var(--light); }
+    .deep { fill: var(--deep); }
+    .store { fill: var(--store); }
+    .note { fill: var(--note); }
     .label {
       font-size: 15px;
       font-weight: 700;
@@ -58,105 +68,114 @@
       font-weight: 700;
       fill: #3f4b5a;
     }
+    .arrow {
+      stroke: var(--line);
+      stroke-width: 2;
+      fill: none;
+      marker-end: url(#arrow);
+    }
+    .soft {
+      stroke-dasharray: 6 5;
+    }
   </style>
 </head>
 <body>
 <main>
   <h1>Traceable Deep Agents Sample Architecture</h1>
-  <p>Runtime owns the public Agent Server API and trace store. The sample owns the Tech Radar tool behavior and talks to TechNews read APIs.</p>
-  <svg viewBox="0 0 1080 720" role="img" aria-labelledby="title desc">
+  <p>Runtime owns the public API, trace store, replay, and AgentOps surfaces. The sample owns scoped Tech Radar execution and routes each request to light deterministic tools or the Deep Agents LLM path.</p>
+  <svg viewBox="0 0 1120 780" role="img" aria-labelledby="title desc">
     <title id="title">Traceable Deep Agents Sample Architecture</title>
-    <desc id="desc">Architecture showing idounAIChat and Workbench calling traceable-agent-runtime, which delegates tech-radar runs to traceable-deep-agents-sample, which reads technews-publisher data and returns traces.</desc>
+    <desc id="desc">Architecture showing idounAIChat and AgentOps calling traceable-agent-runtime, which delegates tech-radar runs to a sample adapter. The sample builds ContextMesh, classifies complexity, resolves skill and tool bindings, then uses either a deterministic light path or a Deep Agents LLM path with TechNews tools and trace callbacks.</desc>
     <defs>
       <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-        <path d="M0,0 L0,6 L9,3 z" fill="#7a8697"></path>
+        <path d="M0,0 L0,6 L9,3 z" fill="#6f7c8d"></path>
       </marker>
-      <style>
-        .box { rx: 10; stroke: #96a1af; stroke-width: 1.4; }
-        .runtime { fill: var(--runtime); }
-        .sample { fill: var(--sample); }
-        .store { fill: var(--store); }
-        .external { fill: var(--external); }
-        .risk { fill: var(--risk); }
-        .arrow { stroke: var(--line); stroke-width: 2; fill: none; marker-end: url(#arrow); }
-        .soft { stroke-dasharray: 6 5; }
-      </style>
     </defs>
 
-    <text x="56" y="42" class="lane">Clients</text>
-    <text x="336" y="42" class="lane">Traceable Runtime</text>
-    <text x="640" y="42" class="lane">External Agent</text>
-    <text x="880" y="42" class="lane">Knowledge Source</text>
+    <text x="42" y="42" class="lane">Clients</text>
+    <text x="282" y="42" class="lane">Traceable Runtime</text>
+    <text x="545" y="42" class="lane">Sample Adapter</text>
+    <text x="846" y="42" class="lane">Execution Paths</text>
+    <text x="984" y="42" class="lane">Sources</text>
 
-    <rect x="36" y="72" width="220" height="94" class="box external"></rect>
-    <text x="58" y="108" class="label">idounAIChat</text>
-    <text x="58" y="132" class="small">Agent Server Mode</text>
-    <text x="58" y="152" class="small">session_id: conversation id</text>
+    <rect x="32" y="70" width="200" height="88" class="box client"></rect>
+    <text x="54" y="104" class="label">idounAIChat</text>
+    <text x="54" y="128" class="small">Agent Server Mode</text>
+    <text x="54" y="148" class="small">thin chat and trace viewer</text>
 
-    <rect x="36" y="206" width="220" height="94" class="box external"></rect>
-    <text x="58" y="242" class="label">AgentOps Workbench</text>
-    <text x="58" y="266" class="small">Run Inspector</text>
-    <text x="58" y="286" class="small">Replay / Batch / Suites</text>
+    <rect x="32" y="192" width="200" height="100" class="box client"></rect>
+    <text x="54" y="228" class="label">AgentOps Workbench</text>
+    <text x="54" y="252" class="small">Run Inspector</text>
+    <text x="54" y="272" class="small">Route / Model Path / Tool Mode</text>
 
-    <rect x="330" y="72" width="250" height="104" class="box runtime"></rect>
-    <text x="354" y="108" class="label">traceable-agent-runtime</text>
-    <text x="354" y="132" class="small">/v1/runs, /v1/agents</text>
-    <text x="354" y="152" class="small">manifest, policy, replay</text>
+    <rect x="282" y="70" width="215" height="96" class="box runtime"></rect>
+    <text x="304" y="106" class="label">Agent Server API</text>
+    <text x="304" y="130" class="small">/v1/runs, /v1/agents</text>
+    <text x="304" y="150" class="small">tech-radar external_adapter</text>
 
-    <rect x="330" y="216" width="250" height="94" class="box runtime"></rect>
-    <text x="354" y="252" class="label">Trace Store</text>
-    <text x="354" y="276" class="small">runs, steps, snapshots</text>
-    <text x="354" y="296" class="small">eval and diff inputs</text>
+    <rect x="282" y="204" width="215" height="106" class="box runtime"></rect>
+    <text x="304" y="238" class="label">Runtime Store</text>
+    <text x="304" y="262" class="small">imported trace steps</text>
+    <text x="304" y="282" class="small">snapshots, replay, eval, diff</text>
 
-    <rect x="640" y="72" width="240" height="104" class="box sample"></rect>
-    <text x="664" y="108" class="label">Deep Agents Sample</text>
-    <text x="664" y="132" class="small">/v1/runs, /v1/agents</text>
-    <text x="664" y="152" class="small">Tech Radar adapter</text>
+    <rect x="545" y="70" width="230" height="94" class="box mesh"></rect>
+    <text x="567" y="104" class="label">Runtime Adapter</text>
+    <text x="567" y="128" class="small">ContextMesh identity</text>
+    <text x="567" y="148" class="small">tenant / workspace / user</text>
 
-    <rect x="640" y="216" width="240" height="122" class="box sample"></rect>
-    <text x="664" y="252" class="label">Read-only Tools</text>
-    <text x="664" y="276" class="small">search_tech_news</text>
-    <text x="664" y="296" class="small">get_latest_tech_news</text>
-    <text x="664" y="316" class="small">get_tech_news_article</text>
+    <rect x="545" y="202" width="230" height="112" class="box mesh"></rect>
+    <text x="567" y="236" class="label">Route and Scope</text>
+    <text x="567" y="260" class="small">ComplexityRouter</text>
+    <text x="567" y="280" class="small">SkillRegistry</text>
+    <text x="567" y="300" class="small">tenant-aware ToolBinding</text>
 
-    <rect x="900" y="206" width="150" height="118" class="box store"></rect>
-    <text x="920" y="242" class="label">TechNews API</text>
-    <text x="920" y="266" class="small">latest</text>
-    <text x="920" y="286" class="small">search</text>
-    <text x="920" y="306" class="small">article detail</text>
+    <rect x="830" y="72" width="230" height="116" class="box light"></rect>
+    <text x="852" y="108" class="label">Light Path</text>
+    <text x="852" y="132" class="small">deterministic TechNews plan</text>
+    <text x="852" y="152" class="small">single-step lookup</text>
+    <text x="852" y="172" class="small">default fallback for disabled deep</text>
 
-    <rect x="900" y="374" width="150" height="104" class="box store"></rect>
-    <text x="920" y="410" class="label">Daily Digest</text>
-    <text x="920" y="434" class="small">morning KST</text>
-    <text x="920" y="454" class="small">previous day</text>
+    <rect x="830" y="226" width="230" height="136" class="box deep"></rect>
+    <text x="852" y="262" class="label">Deep Agents Path</text>
+    <text x="852" y="286" class="small">TECH_RADAR_DEEP_PATH_ENABLED</text>
+    <text x="852" y="306" class="small">Gemini/OpenAI model provider</text>
+    <text x="852" y="326" class="small">deep_model_* / deep_tool_* trace</text>
+    <text x="852" y="346" class="small">retry final synthesis if tool-only</text>
 
-    <rect x="330" y="374" width="250" height="114" class="box runtime"></rect>
-    <text x="354" y="410" class="label">Replay Contract</text>
-    <text x="354" y="434" class="small">RunCreateRequest.replay</text>
-    <text x="354" y="454" class="small">live or frozen</text>
-    <text x="354" y="474" class="small">capability cache</text>
+    <rect x="830" y="402" width="230" height="96" class="box store"></rect>
+    <text x="852" y="438" class="label">TechNews Read APIs</text>
+    <text x="852" y="462" class="small">search_tech_news</text>
+    <text x="852" y="482" class="small">latest / article detail</text>
 
-    <rect x="640" y="398" width="240" height="90" class="box sample"></rect>
-    <text x="664" y="434" class="label">Frozen Tool Result</text>
-    <text x="664" y="458" class="small">reuse matching output</text>
-    <text x="664" y="478" class="small">skip live tool call</text>
+    <rect x="545" y="402" width="230" height="96" class="box runtime"></rect>
+    <text x="567" y="438" class="label">Tool Replay Contract</text>
+    <text x="567" y="462" class="small">live: call tool/API again</text>
+    <text x="567" y="482" class="small">frozen: reuse recorded tool result</text>
 
-    <rect x="36" y="560" width="1014" height="92" class="box risk"></rect>
-    <text x="58" y="594" class="label">Freshness Rule</text>
-    <text x="58" y="620" class="small">For “today's news” requests, answer from the latest collected issue and say today's collection may not be available yet.</text>
+    <rect x="282" y="408" width="215" height="90" class="box runtime"></rect>
+    <text x="304" y="442" class="label">Trace Contract</text>
+    <text x="304" y="466" class="small">context_mesh_built</text>
+    <text x="304" y="486" class="small">complexity_classified / route_selected</text>
 
-    <path class="arrow" d="M256 118 H330"></path>
-    <path class="arrow" d="M256 252 H330"></path>
-    <path class="arrow" d="M580 124 H640"></path>
-    <path class="arrow" d="M760 176 V216"></path>
-    <path class="arrow" d="M880 276 H900"></path>
-    <path class="arrow" d="M975 374 V324"></path>
-    <path class="arrow" d="M640 136 C605 158 606 225 580 252"></path>
-    <path class="arrow soft" d="M455 310 V374"></path>
-    <path class="arrow soft" d="M580 430 H640"></path>
-    <path class="arrow soft" d="M760 398 V338"></path>
-    <path class="arrow" d="M455 176 V216"></path>
-    <path class="arrow" d="M760 338 C760 514 142 514 142 560"></path>
+    <rect x="32" y="560" width="1028" height="112" class="box note"></rect>
+    <text x="54" y="596" class="label">Stable Boundaries</text>
+    <text x="54" y="622" class="small">Clients call runtime, not the sample directly. The runtime imports sample traces so Workbench, replay, eval, and diff stay on the runtime API.</text>
+    <text x="54" y="646" class="small">Replay currently controls tool results, not model output. Deep execution remains feature-flagged until default-on, tenant-gated, or agent-policy-gated behavior is decided.</text>
+
+    <path class="arrow" d="M232 114 H282"></path>
+    <path class="arrow" d="M232 244 H282"></path>
+    <path class="arrow" d="M497 118 H545"></path>
+    <path class="arrow" d="M660 164 V202"></path>
+    <path class="arrow" d="M775 244 C800 202 810 148 830 132"></path>
+    <path class="arrow" d="M775 278 C802 282 808 292 830 294"></path>
+    <path class="arrow" d="M945 188 V226"></path>
+    <path class="arrow" d="M945 362 V402"></path>
+    <path class="arrow" d="M830 450 H775"></path>
+    <path class="arrow soft" d="M545 450 H497"></path>
+    <path class="arrow soft" d="M390 310 V408"></path>
+    <path class="arrow soft" d="M545 118 C520 182 520 252 497 258"></path>
+    <path class="arrow" d="M660 314 V402"></path>
+    <path class="arrow soft" d="M132 292 C132 518 548 520 548 560"></path>
   </svg>
 </main>
 </body>
