@@ -87,12 +87,15 @@ frozen tool output instead of calling the live TechNews tool.
 
 - MVP tools are read-only.
 - Fixture data is synthetic.
-- Deep Agents integration is exposed through `build_deep_agent`; deterministic
-  fixture tests stay independent from live LLM credentials.
+- Deep Agents integration is exposed through `build_deep_agent` and the
+  runtime-facing `DeepPathRunner`; deterministic fixture tests stay independent
+  from live LLM credentials.
 - The runtime-compatible adapter now runs a deterministic `ComplexityRouter`.
   It records `complexity_classified`, `route_selected`, and `light_plan_created`
-  before tool execution. Deep candidates currently fall back to the light path
-  until the Deep Agents runtime path is wired.
+  before tool execution. Deep candidates fall back to the light path by default,
+  but `TECH_RADAR_DEEP_PATH_ENABLED=true` lets deep candidates call the Deep
+  Agents path behind the same ContextMesh, SkillRegistry, and Tool Binding
+  boundary.
 - Portable skills live under `traceable_deep_agents_sample/skills/*/SKILL.md`.
   The adapter records `skill_catalog_filtered` for every run and `skill_loaded`
   when a freshness or trend-briefing skill applies.

@@ -87,12 +87,14 @@ portable frozen tool result를 함께 보내고, sample은 matching frozen tool 
 
 - MVP tool은 read-only입니다.
 - Fixture data는 synthetic data입니다.
-- Deep Agents integration은 `build_deep_agent`를 통해 노출됩니다.
+- Deep Agents integration은 `build_deep_agent`와 runtime-facing `DeepPathRunner`를
+  통해 노출됩니다.
 - deterministic fixture test는 live LLM credential 없이 동작합니다.
 - runtime-compatible adapter는 deterministic `ComplexityRouter`를 실행합니다.
   Tool 실행 전에 `complexity_classified`, `route_selected`,
-  `light_plan_created`를 기록합니다. Deep candidate는 아직 Deep Agents runtime
-  path가 연결되기 전까지 light path로 fallback됩니다.
+  `light_plan_created`를 기록합니다. Deep candidate는 기본적으로 light path로
+  fallback되지만, `TECH_RADAR_DEEP_PATH_ENABLED=true`이면 같은 ContextMesh,
+  SkillRegistry, Tool Binding boundary 뒤에서 Deep Agents path를 호출합니다.
 - Portable skill은 `traceable_deep_agents_sample/skills/*/SKILL.md` 아래에
   둡니다. Adapter는 매 run마다 `skill_catalog_filtered`를 기록하고,
   freshness나 trend briefing skill이 적용되면 `skill_loaded`를 기록합니다.

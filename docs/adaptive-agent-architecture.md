@@ -337,8 +337,8 @@ large for this architecture document.
   approval, version, and hash policy into the runtime registry.
 - Tool Gateway: add tenant-aware tool binding before wiring the real Deep Agents
   path, so both light and deep execution use the same scoped tool contract.
-- Deep path: connect Deep Agents only after route, skill, memory, and tool
-  boundaries are visible in trace.
+- Deep path: keep Deep Agents behind `TECH_RADAR_DEEP_PATH_ENABLED` until live
+  provider credentials and trace event bridging are stable.
 - Trace contract: keep `context_mesh_built`, `complexity_classified`,
   `route_selected`, `skill_catalog_filtered`, `skill_loaded`, and
   `tool_binding_resolved` stable even if the internal implementation changes.
@@ -374,9 +374,14 @@ The first adaptive routing phase is also implemented:
 - focused cross-tenant leakage tests verify that ContextMesh memory namespaces,
   skill filtering traces, Tool Binding traces, runtime snapshots, and external
   replay payloads stay inside the resolved tenant boundary.
-- until the Deep Agents runtime path is wired, deep candidates explicitly fall
-  back to the light path with a traceable fallback reason.
+- the runtime-facing adapter has a `DeepPathRunner` bridge to `build_deep_agent`.
+  Deep candidates still fall back to the light path by default, but
+  `TECH_RADAR_DEEP_PATH_ENABLED=true` lets deep candidates invoke the Deep
+  Agents path.
+- Deep path traces include `deep_agent_started`, `model_call_started`,
+  `model_call_completed`, and `deep_agent_completed`. If the deep path fails,
+  `deep_agent_failed` is recorded and the deterministic light path is used.
 
-The next implementation step is connecting the real Deep Agents path behind the
-existing route and feature-flag controls. It should use the same scoped skill,
-memory, and tool contract as the light path.
+The next implementation step is live provider smoke testing with Gemini or
+OpenAI credentials, then bridging Deep Agents tool/model events into richer
+runtime trace steps.

@@ -344,8 +344,8 @@ Light path와 deep path는 같은 memory interface를 공유해야 합니다. �
   approval, version, hash policy는 runtime registry로 이동합니다.
 - Tool Gateway: 실제 Deep Agents path를 연결하기 전에 tenant-aware tool binding을
   추가합니다. 그래야 light와 deep execution이 같은 scoped tool contract를 씁니다.
-- Deep path: route, skill, memory, tool boundary가 trace에 보인 뒤 Deep Agents를
-  연결합니다.
+- Deep path: live provider credential과 trace event bridge가 안정될 때까지
+  Deep Agents는 `TECH_RADAR_DEEP_PATH_ENABLED` 뒤에 둡니다.
 - Trace contract: 내부 구현이 바뀌어도 `context_mesh_built`,
   `complexity_classified`, `route_selected`, `skill_catalog_filtered`,
   `skill_loaded`, `tool_binding_resolved`는 안정적으로 유지합니다.
@@ -380,9 +380,13 @@ Light path와 deep path는 같은 memory interface를 공유해야 합니다. �
 - Focused cross-tenant leakage test가 ContextMesh memory namespace, skill
   filtering trace, Tool Binding trace, runtime snapshot, external replay payload가
   resolved tenant boundary 안에 머무는지 확인합니다.
-- 아직 Deep Agents runtime path를 실제 실행 경로에 연결하지 않았기 때문에, deep
-  candidate는 traceable fallback reason과 함께 light path로 처리합니다.
+- Runtime-facing adapter는 `build_deep_agent`로 이어지는 `DeepPathRunner`
+  bridge를 가집니다. Deep candidate는 기본적으로 light path로 fallback되지만,
+  `TECH_RADAR_DEEP_PATH_ENABLED=true`이면 Deep Agents path를 호출합니다.
+- Deep path trace에는 `deep_agent_started`, `model_call_started`,
+  `model_call_completed`, `deep_agent_completed`가 남습니다. Deep path가 실패하면
+  `deep_agent_failed`를 기록하고 deterministic light path를 사용합니다.
 
-다음 구현 단계는 기존 route와 feature flag 뒤에 실제 Deep Agents path를 연결하는
-것입니다. Deep path도 light path와 같은 scoped skill, memory, tool contract를
-사용해야 합니다.
+다음 구현 단계는 Gemini 또는 OpenAI credential로 live provider smoke를 진행하고,
+그 다음 Deep Agents 내부 tool/model event를 더 풍부한 runtime trace step으로
+bridging하는 것입니다.

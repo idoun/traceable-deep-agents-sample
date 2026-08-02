@@ -1,3 +1,5 @@
+from traceable_deep_agents_sample.config import Settings
+from traceable_deep_agents_sample.deep_path import DeepPathResult
 from traceable_deep_agents_sample.runtime_adapter import TraceableRuntimeAdapter
 from traceable_deep_agents_sample.runtime_contract import RuntimeRunCreateRequest
 
@@ -79,10 +81,49 @@ def test_runtime_adapter_traces_deep_candidate_with_light_fallback():
     assert complexity.output_json["route"] == "deep"
     assert route.output_json["requested_route"] == "deep"
     assert route.output_json["selected_route"] == "light"
-    assert "Deep Agents execution is not yet wired" in route.output_json["fallback_reason"]
+    assert "Deep Agents path is disabled" in route.output_json["fallback_reason"]
     skill = next(step for step in trace.steps if step.type == "skill_loaded")
     assert skill.output_json["skill_id"] == "tech-trend-briefing"
     assert run.status == "completed"
+
+
+def test_runtime_adapter_uses_deep_path_when_enabled():
+    runner = _FakeDeepPathRunner()
+    adapter = TraceableRuntimeAdapter(settings=Settings(deep_path_enabled=True), deep_path_runner=runner)
+
+    run = adapter.run(RuntimeRunCreateRequest(input="AI agent 뉴스를 비교하고 리스크와 전망을 분석해줘", tenant_id="org:deep"))
+    trace = adapter.get_trace(run.run_id)
+
+    assert trace is not None
+    assert run.output_text == "Deep path answer"
+    assert run.stats.model == "fake-deep-model"
+    assert runner.calls[0]["tenant_id"] == "org:deep"
+    assert runner.calls[0]["skill_ids"] == ["tech-trend-briefing"]
+    step_types = [step.type for step in trace.steps]
+    assert "deep_agent_started" in step_types
+    assert "model_call_started" in step_types
+    assert "model_call_completed" in step_types
+    assert "deep_agent_completed" in step_types
+    assert "light_plan_created" not in step_types
+    route = next(step for step in trace.steps if step.type == "route_selected")
+    assert route.output_json["selected_route"] == "deep"
+
+
+def test_runtime_adapter_falls_back_to_light_when_deep_path_fails():
+    adapter = TraceableRuntimeAdapter(settings=Settings(deep_path_enabled=True), deep_path_runner=_FailingDeepPathRunner())
+
+    run = adapter.run(RuntimeRunCreateRequest(input="AI agent 뉴스를 비교하고 리스크와 전망을 분석해줘"))
+    trace = adapter.get_trace(run.run_id)
+
+    assert trace is not None
+    assert run.status == "completed"
+    assert run.stats.model == "deterministic-fixture"
+    step_types = [step.type for step in trace.steps]
+    assert "deep_agent_failed" in step_types
+    assert "light_plan_created" in step_types
+    failed = next(step for step in trace.steps if step.type == "deep_agent_failed")
+    assert failed.status == "failed"
+    assert "fake deep path failure" in failed.error
 
 
 def test_runtime_adapter_reuses_frozen_tool_result():
@@ -213,3 +254,31 @@ def _assert_trace_scoped_to_tenant(trace, *, expected: str, forbidden: str):
     assert binding.output_json["tenant_id"] == f"org:{expected}"
     assert binding.output_json["binding_id"] == f"org:{expected}:technews.read"
     assert binding.output_json["credential_ref"] == "[REDACTED]"
+
+
+class _FakeDeepPathRunner:
+    provider = "fake"
+    model = "fake-deep-model"
+
+    def __init__(self):
+        self.calls = []
+
+    def run(self, *, payload, context_mesh, selected_skills, tool_binding):
+        self.calls.append(
+            {
+                "input": payload.input,
+                "tenant_id": context_mesh["tenant"]["id"],
+                "skill_ids": [skill.skill_id for skill in selected_skills],
+                "binding_id": tool_binding.binding_id,
+            }
+        )
+        return DeepPathResult(answer="Deep path answer", raw_output={"source": "fake"})
+
+
+class _FailingDeepPathRunner:
+    provider = "fake"
+    model = "failing-deep-model"
+
+    def run(self, **kwargs):
+        del kwargs
+        raise RuntimeError("fake deep path failure")

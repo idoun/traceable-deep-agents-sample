@@ -8,6 +8,7 @@ from traceable_deep_agents_sample.agent import NO_EVIDENCE
 from traceable_deep_agents_sample.complexity_router import ComplexityRouter
 from traceable_deep_agents_sample.config import Settings
 from traceable_deep_agents_sample.context_mesh import build_context_mesh
+from traceable_deep_agents_sample.deep_path import DeepPathRunner
 from traceable_deep_agents_sample.knowledge.fixture_store import FixtureArticleStore
 from traceable_deep_agents_sample.knowledge.technews_api_store import TechNewsApiStore
 from traceable_deep_agents_sample.runtime_contract import (
@@ -37,6 +38,11 @@ RUNTIME_STEP_TYPES = {
     "light_plan_created",
     "tool_binding_resolved",
     "policy_decision",
+    "deep_agent_started",
+    "model_call_started",
+    "model_call_completed",
+    "deep_agent_completed",
+    "deep_agent_failed",
     "tool_call_started",
     "tool_call_completed",
     "tool_call_failed",
@@ -49,8 +55,9 @@ RUNTIME_STEP_TYPES = {
 class TraceableRuntimeAdapter:
     """Local adapter that emits traceable-agent-runtime-shaped run traces."""
 
-    def __init__(self, settings: Settings | None = None):
+    def __init__(self, settings: Settings | None = None, deep_path_runner: DeepPathRunner | None = None):
         self.settings = settings or Settings()
+        self.deep_path_runner = deep_path_runner or DeepPathRunner(self.settings)
         self._traces: dict[str, RuntimeTraceResponse] = {}
 
     def run(self, payload: RuntimeRunCreateRequest) -> RuntimeRunResponse:
@@ -140,10 +147,10 @@ class TraceableRuntimeAdapter:
 
             complexity = ComplexityRouter().classify(payload.input)
             requested_route = _requested_route(self.settings.execution_mode, complexity.route)
-            selected_route = "light"
+            selected_route = "deep" if requested_route == "deep" and self.settings.deep_path_enabled else "light"
             fallback_reason = None
-            if requested_route == "deep":
-                fallback_reason = "Deep Agents execution is not yet wired into the runtime-facing path."
+            if requested_route == "deep" and not self.settings.deep_path_enabled:
+                fallback_reason = "Deep Agents path is disabled for this run."
             record(
                 "complexity_classified",
                 "Request complexity classified by deterministic router.",
@@ -222,41 +229,77 @@ class TraceableRuntimeAdapter:
                 },
             )
 
-            # Keep the runtime-facing adapter on the same knowledge backend as
-            # Deep Agents tools, so external server smoke tests exercise real data.
-            tools = TechRadarTools(_build_store(self.settings))
-            record(
-                "light_plan_created",
-                "Light path planned a single read-only TechNews tool call.",
-                input_json={"route": selected_route},
-                output_json={"tool_name": tool_name, "tool_input": tool_input, "max_tool_calls": 1},
-            )
-            record(
-                "tool_call_started",
-                "Tech Radar tool call started.",
-                input_json={"tool_name": tool_name, "tool_input": tool_input, "tool_mode": _tool_mode(payload)},
-            )
-            frozen_result = _frozen_tool_result(payload, tool_name=tool_name, tool_input=tool_input)
-            search_result = frozen_result if frozen_result is not None else _execute_tool(tools, tool_name, tool_input)
-            record(
-                "tool_call_completed",
-                "Tech Radar tool call completed.",
-                output_json={
-                    "tool_name": tool_name,
-                    "status": "success",
-                    "output": search_result,
-                    "error": None,
-                    "tool_mode": _tool_mode(payload),
-                },
-            )
+            answer = None
+            if selected_route == "deep":
+                record(
+                    "deep_agent_started",
+                    "Deep Agents path started for a deep candidate request.",
+                    input_json={
+                        "requested_route": requested_route,
+                        "selected_skill_ids": [skill.skill_id for skill in selected_skills],
+                        "tool_binding_id": tool_binding.binding_id,
+                    },
+                    output_json={"status": "started"},
+                )
+                try:
+                    record(
+                        "model_call_started",
+                        "Deep Agents model call started.",
+                        input_json={
+                            "provider": getattr(self.deep_path_runner, "provider", "deepagents"),
+                            "model": getattr(self.deep_path_runner, "model", "configured"),
+                        },
+                    )
+                    deep_result = self.deep_path_runner.run(
+                        payload=payload,
+                        context_mesh=context_mesh,
+                        selected_skills=selected_skills,
+                        tool_binding=tool_binding,
+                    )
+                    record(
+                        "model_call_completed",
+                        "Deep Agents model call completed.",
+                        output_json={
+                            "output_length": len(deep_result.answer),
+                            "raw_output": deep_result.raw_output,
+                        },
+                    )
+                    record(
+                        "deep_agent_completed",
+                        "Deep Agents path completed.",
+                        output_json={"status": "completed"},
+                    )
+                    answer = deep_result.answer
+                except Exception as exc:
+                    record(
+                        "deep_agent_failed",
+                        "Deep Agents path failed; falling back to light path.",
+                        input_json={"selected_route": selected_route},
+                        status="failed",
+                        error=str(exc),
+                    )
 
-            answer = _answer_from_search(search_result, freshness_note=_freshness_note(payload.input, search_result))
-            record(
-                "final_answer",
-                "Final answer prepared.",
-                input_json={"source_count": search_result["total_results"]},
-                output_json={"answer": answer},
-            )
+            if answer is None:
+                selected_route = "light"
+                fallback_reason = fallback_reason or "Deep Agents execution failed; deterministic light path was used."
+                # Keep the runtime-facing adapter on the same knowledge backend as
+                # Deep Agents tools, so external server smoke tests exercise real data.
+                tools = TechRadarTools(_build_store(self.settings))
+                answer = _run_light_path(
+                    record=record,
+                    tools=tools,
+                    payload=payload,
+                    selected_route=selected_route,
+                    tool_name=tool_name,
+                    tool_input=tool_input,
+                )
+            else:
+                record(
+                    "final_answer",
+                    "Final answer prepared by Deep Agents path.",
+                    input_json={"route": "deep"},
+                    output_json={"answer": answer},
+                )
             record("run_completed", "Run completed successfully.", output_json={"status": "completed"})
             if payload.replay:
                 record(
@@ -271,7 +314,7 @@ class TraceableRuntimeAdapter:
                     "status": "completed",
                     "output_text": answer,
                     "stats": RuntimeRunStats(
-                        model=f"deterministic-{self.settings.knowledge_backend}",
+                        model=_stats_model(self.settings, selected_route, deep_path_runner=self.deep_path_runner),
                         input_tokens=_count_words(payload.input),
                         output_tokens=_count_words(answer),
                         total_time_ms=round((perf_counter() - started) * 1000, 3),
@@ -290,6 +333,63 @@ class TraceableRuntimeAdapter:
 
     def get_trace(self, run_id: str) -> RuntimeTraceResponse | None:
         return self._traces.get(run_id)
+
+
+def _run_light_path(
+    *,
+    record,
+    tools: TechRadarTools,
+    payload: RuntimeRunCreateRequest,
+    selected_route: str,
+    tool_name: str,
+    tool_input: dict,
+) -> str:
+    record(
+        "light_plan_created",
+        "Light path planned a single read-only TechNews tool call.",
+        input_json={"route": selected_route},
+        output_json={"tool_name": tool_name, "tool_input": tool_input, "max_tool_calls": 1},
+    )
+    record(
+        "tool_call_started",
+        "Tech Radar tool call started.",
+        input_json={"tool_name": tool_name, "tool_input": tool_input, "tool_mode": _tool_mode(payload)},
+    )
+    frozen_result = _frozen_tool_result(payload, tool_name=tool_name, tool_input=tool_input)
+    search_result = frozen_result if frozen_result is not None else _execute_tool(tools, tool_name, tool_input)
+    record(
+        "tool_call_completed",
+        "Tech Radar tool call completed.",
+        output_json={
+            "tool_name": tool_name,
+            "status": "success",
+            "output": search_result,
+            "error": None,
+            "tool_mode": _tool_mode(payload),
+        },
+    )
+
+    answer = _answer_from_search(search_result, freshness_note=_freshness_note(payload.input, search_result))
+    record(
+        "final_answer",
+        "Final answer prepared.",
+        input_json={"source_count": search_result["total_results"]},
+        output_json={"answer": answer},
+    )
+    return answer
+
+
+def _stats_model(settings: Settings, selected_route: str, *, deep_path_runner: DeepPathRunner | None = None) -> str:
+    if selected_route == "deep":
+        if deep_path_runner is not None:
+            return getattr(deep_path_runner, "model", "configured")
+        provider = settings.llm_provider.strip().lower() or "openai"
+        if provider == "gemini":
+            return settings.gemini_model
+        if settings.model:
+            return settings.model
+        return settings.llm_model
+    return f"deterministic-{settings.knowledge_backend}"
 
 
 def _answer_from_search(search_result: dict, *, freshness_note: str | None = None) -> str:
