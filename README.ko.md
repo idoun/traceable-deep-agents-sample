@@ -19,6 +19,8 @@ Adaptive, multi-tenant agent target design은
 정리되어 있습니다.
 현재 route와 runtime 검증 계획은 [docs/test-plan.ko.md](docs/test-plan.ko.md)에
 정리되어 있습니다.
+중요 모듈의 역할과 구현 정도는
+[docs/module-reference.ko.md](docs/module-reference.ko.md)에 정리되어 있습니다.
 
 ## Setup
 

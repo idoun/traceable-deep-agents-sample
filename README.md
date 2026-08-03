@@ -18,6 +18,8 @@ The target adaptive, multi-tenant agent design is documented in
 [docs/adaptive-agent-architecture.md](docs/adaptive-agent-architecture.md).
 The current route and runtime verification plan is documented in
 [docs/test-plan.md](docs/test-plan.md).
+Important module responsibilities and implementation status are documented in
+[docs/module-reference.md](docs/module-reference.md).
 
 ## Setup
 
