@@ -50,18 +50,27 @@ Light path는 한 번의 제한된 tool plan으로 답할 수 있는 요청을 �
 
 ### Deterministic Complexity Routing Rules
 
-현재 `ComplexityRouter`는 세 marker group을 사용하는 투명한 bootstrap
+현재 `ComplexityRouter`는 네 marker group을 사용하는 투명한 bootstrap
 classifier입니다. 첫 목표는 완벽한 intent detection이 아니라, 왜 light/deep
-후보가 되었는지 trace에 설명 가능하게 남기는 것입니다.
+후보가 되었는지 trace에 설명 가능하게 남기는 것입니다. trace에는 사람이 읽는
+`reasons`와 marker category별 구조화된 `signals`를 함께 기록합니다.
 
 - `_SYNTHESIS_MARKERS`: 판단, 종합, 비교, 전략, 리스크, 전망이 필요한 요청이면
   score를 올립니다. 예: `compare`, `risk`, `forecast`, `비교`, `전망`, `리스크`
 - `_MULTI_STEP_MARKERS`: 근거 확장, 상세 조회, 출처, research, report-style output이
   필요한 요청이면 score를 올립니다. 예: `evidence`, `detail`, `report`, `근거`,
   `출처`, `보고서`
+- `_FILTER_MARKERS`: semantic exclusion이나 filtering이 필요한 요청이면 score를
+  올립니다. 예: `not`, `without`, `exclude`, `아닌`, `제외`, `빼고`
 - `_SIMPLE_MARKERS`: synthesis나 multi-step marker가 없을 때만 score를 낮춥니다.
   한 번의 bounded news lookup으로 처리할 수 있는 요청을 가리킵니다. 예: `today`,
   `latest`, `search`, `오늘`, `최신`, `뉴스`
+
+영어 marker는 token boundary로 매칭해서 `vs`나 `how` 같은 짧은 marker가 다른
+단어 내부에서 잘못 잡히지 않게 합니다. 한국어 marker는 substring 매칭을 쓰지만,
+`만` 같은 selection term은 단독으로 semantic filter marker로 보지 않습니다. 예를
+들어 `AI 뉴스 3개만 찾아줘`는 light lookup으로 남고, `AI가 아닌 기사만 조회해줘`는
+deep semantic-filter 후보가 됩니다.
 
 이 marker list는 영구적인 control plane이 아닙니다. 지금은 sample을 위한
 deterministic v1 policy입니다. 계획은 다음 순서입니다.

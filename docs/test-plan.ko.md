@@ -5,7 +5,11 @@
 
 ## Route Matrix
 
-`tests/test_complexity_router.py`가 routing 발화 matrix를 소유합니다.
+`tests/test_complexity_router.py`가 routing 발화 matrix를 소유합니다. 아래 표는
+대표 케이스를 보여주며, 테스트 파일에는 forecast, strategy/priority, 영어 risk,
+영어 evidence, 영어 `how should`, synthesis term이 섞인 semantic exclusion,
+`show`/`how`와 `notebook`/`not` 같은 짧은 marker false-positive 방지 예시도
+추가로 포함합니다.
 
 | Case | 발화 | 기대 route | 기대 reason |
 | --- | --- | --- | --- |
@@ -13,6 +17,13 @@
 | `deep-synthesis-comparison-risk` | `AI agent 관련 뉴스들을 비교하고 투자 관점의 리스크와 전망을 분석해줘` | `deep` | `requires synthesis, comparison, or judgment` |
 | `deep-evidence-report` | `AI agent 관련 근거와 출처를 자세히 보고서처럼 정리해줘` | `deep` | `asks for evidence expansion or report-style output` |
 | `deep-semantic-exclusion` | `어제 기사중 AI가 아닌 기사만 조회해줄래` | `deep` | `requires semantic filtering or exclusion` |
+| `deep-single-comparison-marker` | `AI agent와 LangGraph 비교해줘` | `deep` | `requires synthesis, comparison, or judgment` |
+| `deep-english-vs-marker` | `Compare latest AI news vs yesterday` | `deep` | `requires synthesis, comparison, or judgment` |
+
+같은 테스트 파일에서 false-positive guardrail도 관리합니다. `최신 뉴스만 알려줘`,
+`AI 뉴스 3개만 찾아줘`, `news only`, `show me latest news`,
+`how many AI articles today?` 같은 selection/count 요청은 light path에 남아야 하며,
+semantic-filter signal을 남기면 안 됩니다.
 
 ## Runtime Adapter Coverage
 
@@ -24,6 +35,8 @@
 - deep candidate는 Deep Agents path가 꺼져 있으면 light로 fallback합니다.
 - `deep_path_enabled=true`이면 deep candidate가 deep runner를 호출합니다.
 - semantic exclusion request는 deep path가 켜져 있을 때 deep runner를 호출합니다.
+- complexity trace는 구조화된 `signals`를 포함해, free-form reason text를 다시
+  파싱하지 않고도 어떤 routing category가 매칭됐는지 확인할 수 있게 합니다.
 - deep runner 실패는 `deep_agent_failed`를 기록하고 light로 fallback합니다.
 - frozen replay는 전달받은 frozen tool output을 재사용하고
   `tool_mode="frozen"`을 기록합니다.

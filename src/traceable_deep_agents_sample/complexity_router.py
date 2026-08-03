@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Literal
 
 
@@ -14,6 +15,7 @@ class ComplexityDecision:
     route: Route
     score: float
     reasons: list[str]
+    signals: dict[str, list[str]]
 
 
 class ComplexityRouter:
@@ -44,7 +46,12 @@ class ComplexityRouter:
         "strategy",
         "risk",
         "why",
-        "how",
+        "how can",
+        "how could",
+        "how does",
+        "how should",
+        "how will",
+        "how would",
         "analyze",
         "synthesize",
         "trend",
@@ -76,48 +83,64 @@ class ComplexityRouter:
         "아닌",
         "제외",
         "빼고",
-        "만",
         "not",
         "except",
         "exclude",
         "without",
-        "only",
     )
 
     def classify(self, user_input: str) -> ComplexityDecision:
         normalized = " ".join(user_input.lower().split())
         reasons: list[str] = []
+        signals: dict[str, list[str]] = {}
         score = 0.0
 
-        synthesis_hits = _count_hits(normalized, self._SYNTHESIS_MARKERS)
-        if synthesis_hits:
-            score += min(0.55, 0.2 + synthesis_hits * 0.12)
+        synthesis_markers = _matching_markers(normalized, self._SYNTHESIS_MARKERS)
+        if synthesis_markers:
+            score += min(0.65, 0.5 + len(synthesis_markers) * 0.08)
+            signals["synthesis"] = synthesis_markers
             reasons.append("requires synthesis, comparison, or judgment")
 
-        multi_step_hits = _count_hits(normalized, self._MULTI_STEP_MARKERS)
-        if multi_step_hits:
-            score += min(0.6, 0.2 + multi_step_hits * 0.12)
+        multi_step_markers = _matching_markers(normalized, self._MULTI_STEP_MARKERS)
+        if multi_step_markers:
+            score += min(0.65, 0.5 + len(multi_step_markers) * 0.08)
+            signals["multi_step"] = multi_step_markers
             reasons.append("asks for evidence expansion or report-style output")
 
-        filter_hits = _count_hits(normalized, self._FILTER_MARKERS)
-        if filter_hits:
-            score += min(0.6, 0.25 + filter_hits * 0.15)
+        filter_markers = _matching_markers(normalized, self._FILTER_MARKERS)
+        if filter_markers:
+            score += min(0.65, 0.5 + len(filter_markers) * 0.08)
+            signals["semantic_filter"] = filter_markers
             reasons.append("requires semantic filtering or exclusion")
 
         if len(normalized) >= 80:
             score += 0.15
+            signals["length"] = [">=80"]
             reasons.append("long request likely needs planning")
 
-        simple_hits = _count_hits(normalized, self._SIMPLE_MARKERS)
-        if simple_hits and not synthesis_hits and not multi_step_hits and not filter_hits:
-            score -= min(0.3, simple_hits * 0.08)
+        simple_markers = _matching_markers(normalized, self._SIMPLE_MARKERS)
+        if simple_markers and not synthesis_markers and not multi_step_markers and not filter_markers:
+            score -= min(0.3, len(simple_markers) * 0.08)
+            signals["simple_lookup"] = simple_markers
             reasons.append("single-step news lookup can use the light path")
 
         score = max(0.0, min(1.0, round(score, 2)))
         if score >= 0.5:
-            return ComplexityDecision(route="deep", score=score, reasons=reasons or ["deep route threshold reached"])
-        return ComplexityDecision(route="light", score=score, reasons=reasons or ["simple request"])
+            return ComplexityDecision(
+                route="deep",
+                score=score,
+                reasons=reasons or ["deep route threshold reached"],
+                signals=signals,
+            )
+        return ComplexityDecision(route="light", score=score, reasons=reasons or ["simple request"], signals=signals)
 
 
-def _count_hits(text: str, markers: tuple[str, ...]) -> int:
-    return sum(1 for marker in markers if marker in text)
+def _matching_markers(text: str, markers: tuple[str, ...]) -> list[str]:
+    return [marker for marker in markers if _matches_marker(text, marker)]
+
+
+def _matches_marker(text: str, marker: str) -> bool:
+    if marker.isascii():
+        # English markers need token boundaries so "how" does not match "show".
+        return re.search(rf"(?<![a-z0-9_]){re.escape(marker)}(?![a-z0-9_])", text) is not None
+    return marker in text

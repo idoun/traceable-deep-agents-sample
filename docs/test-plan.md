@@ -5,7 +5,11 @@ contracts before expanding answer quality.
 
 ## Route Matrix
 
-`tests/test_complexity_router.py` owns the routing utterance matrix.
+`tests/test_complexity_router.py` owns the routing utterance matrix. The table
+below lists the representative cases; the test file also includes additional
+implementation-intent examples for forecast, strategy/priority, English risk,
+English evidence, English `how should`, semantic exclusion with synthesis terms,
+and short-marker false positives such as `show`/`how` and `notebook`/`not`.
 
 | Case | Utterance | Expected route | Expected reason |
 | --- | --- | --- | --- |
@@ -13,6 +17,13 @@ contracts before expanding answer quality.
 | `deep-synthesis-comparison-risk` | `AI agent 관련 뉴스들을 비교하고 투자 관점의 리스크와 전망을 분석해줘` | `deep` | `requires synthesis, comparison, or judgment` |
 | `deep-evidence-report` | `AI agent 관련 근거와 출처를 자세히 보고서처럼 정리해줘` | `deep` | `asks for evidence expansion or report-style output` |
 | `deep-semantic-exclusion` | `어제 기사중 AI가 아닌 기사만 조회해줄래` | `deep` | `requires semantic filtering or exclusion` |
+| `deep-single-comparison-marker` | `AI agent와 LangGraph 비교해줘` | `deep` | `requires synthesis, comparison, or judgment` |
+| `deep-english-vs-marker` | `Compare latest AI news vs yesterday` | `deep` | `requires synthesis, comparison, or judgment` |
+
+The same test file also owns false-positive guardrails. Selection or count-like
+requests such as `최신 뉴스만 알려줘`, `AI 뉴스 3개만 찾아줘`, `news only`,
+`show me latest news`, and `how many AI articles today?` must stay on the light
+path and must not emit semantic-filter signals.
 
 ## Runtime Adapter Coverage
 
@@ -24,6 +35,8 @@ runtime-facing path:
 - deep candidates fall back to light when the Deep Agents path is disabled.
 - deep candidates call the deep runner when `deep_path_enabled=true`.
 - semantic exclusion requests call the deep runner when enabled.
+- complexity traces include structured `signals` so matched routing categories
+  can be inspected without re-parsing the free-form reason text.
 - deep runner failures record `deep_agent_failed` and fall back to light.
 - frozen replay reuses supplied frozen tool output and records
   `tool_mode="frozen"`.

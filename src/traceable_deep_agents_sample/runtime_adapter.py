@@ -165,6 +165,7 @@ class TraceableRuntimeAdapter:
                     "score": complexity.score,
                     "route": complexity.route,
                     "reasons": complexity.reasons,
+                    "signals": complexity.signals,
                     "router": "deterministic.v1",
                 },
             )

@@ -50,9 +50,10 @@ for ambiguous requests instead of being called for every run.
 
 ### Deterministic Complexity Routing Rules
 
-`ComplexityRouter` currently uses three marker groups as a transparent bootstrap
+`ComplexityRouter` currently uses four marker groups as a transparent bootstrap
 classifier. They are intentionally simple because the first goal is traceability,
-not perfect intent detection.
+not perfect intent detection. The trace records both human-readable `reasons`
+and structured `signals` with the matched marker categories.
 
 - `_SYNTHESIS_MARKERS`: raises the score when the request asks for judgment,
   synthesis, comparison, strategy, risk, or forecasting. Examples include
@@ -60,10 +61,20 @@ not perfect intent detection.
 - `_MULTI_STEP_MARKERS`: raises the score when the request asks for evidence
   expansion, details, sources, research, or report-style output. Examples
   include `evidence`, `detail`, `report`, `근거`, `출처`, and `보고서`.
+- `_FILTER_MARKERS`: raises the score when the request needs semantic exclusion
+  or filtering. Examples include `not`, `without`, `exclude`, `아닌`, `제외`,
+  and `빼고`.
 - `_SIMPLE_MARKERS`: lowers the score only when no synthesis or multi-step
   markers are present. These markers identify requests that can usually be
   answered with one bounded news lookup, such as `today`, `latest`, `search`,
   `오늘`, `최신`, and `뉴스`.
+
+English markers use token-boundary matching so short markers such as `vs` or
+`how` do not match inside unrelated words. Korean markers use substring
+matching, but selection terms such as `만` are intentionally not semantic
+filter markers on their own. For example, `AI 뉴스 3개만 찾아줘` remains a
+light lookup, while `AI가 아닌 기사만 조회해줘` is a deep semantic-filter
+candidate.
 
 The marker lists are not intended to be the permanent control plane. They are
 the deterministic v1 policy for the sample. The planned migration path is:

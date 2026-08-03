@@ -126,6 +126,7 @@ def test_runtime_adapter_routes_exclusion_filter_request_to_deep_when_enabled():
     step_types = [step.type for step in trace.steps]
     assert complexity.output_json["route"] == "deep"
     assert "requires semantic filtering or exclusion" in complexity.output_json["reasons"]
+    assert complexity.output_json["signals"] == {"semantic_filter": ["아닌"]}
     assert route.output_json["requested_route"] == "deep"
     assert route.output_json["selected_route"] == "deep"
     assert "deep_agent_started" in step_types
